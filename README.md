@@ -86,6 +86,12 @@ Read the plain-English demo report:
 DEMO_REPORT.md
 ```
 
+Operate the demo with the checklist:
+
+```txt
+RUNBOOK.md
+```
+
 Run the real x402 buyer path after switching the server to facilitator mode:
 
 ```powershell
