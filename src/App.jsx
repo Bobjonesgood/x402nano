@@ -1,0 +1,243 @@
+import { useEffect, useMemo, useState } from "react";
+import { Bot, CheckCircle2, CircleDollarSign, DatabaseZap, KeyRound, Loader2, Play, Radar, ShieldCheck } from "lucide-react";
+import { createRoot } from "react-dom/client";
+import "./styles.css";
+
+const buyerAddress = "0xAutonomousAgentWallet";
+
+function Step({ icon: Icon, title, detail, active, done }) {
+  return (
+    <div className={`step ${active ? "active" : ""} ${done ? "done" : ""}`}>
+      <div className="stepIcon">
+        <Icon size={18} />
+      </div>
+      <div>
+        <p>{title}</p>
+        <span>{detail}</span>
+      </div>
+    </div>
+  );
+}
+
+function encodePayment(payment) {
+  return btoa(JSON.stringify(payment)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function App() {
+  const [discovery, setDiscovery] = useState(null);
+  const [phase, setPhase] = useState("idle");
+  const [requirements, setRequirements] = useState(null);
+  const [signature, setSignature] = useState("");
+  const [receipt, setReceipt] = useState(null);
+  const [leads, setLeads] = useState([]);
+  const [log, setLog] = useState([]);
+  const [error, setError] = useState("");
+  const [autonomous, setAutonomous] = useState(true);
+
+  const paid = Boolean(receipt);
+
+  const totalFit = useMemo(() => {
+    if (!leads.length) return 0;
+    return Math.round(leads.reduce((sum, lead) => sum + lead.fit, 0) / leads.length);
+  }, [leads]);
+
+  useEffect(() => {
+    fetch("/.well-known/x402.json")
+      .then(response => response.json())
+      .then(data => {
+        setDiscovery(data);
+        appendLog("Loaded /.well-known/x402.json agent discovery manifest.");
+      })
+      .catch(() => setError("Could not reach the seller server."));
+  }, []);
+
+  function appendLog(message) {
+    setLog(current => [`${new Date().toLocaleTimeString()}  ${message}`, ...current].slice(0, 8));
+  }
+
+  async function requestPremiumLeadData() {
+    setError("");
+    setLeads([]);
+    setReceipt(null);
+    setSignature("");
+    setRequirements(null);
+
+    try {
+      setPhase("requesting");
+      appendLog("Agent requested /api/premium-leads without payment.");
+      const firstResponse = await fetch("/api/premium-leads");
+      const paymentChallenge = await firstResponse.json();
+
+      if (firstResponse.status !== 402) {
+        throw new Error("Expected a 402 payment challenge from the seller API.");
+      }
+
+      setRequirements(paymentChallenge.paymentRequirements);
+      appendLog("Seller returned 402 Payment Required with x402 requirements.");
+
+      if (!autonomous) {
+        setPhase("challenged");
+        return;
+      }
+
+      await signAndRetry(paymentChallenge.paymentRequirements);
+    } catch (requestError) {
+      setPhase("idle");
+      setError(requestError.message);
+      appendLog(`Flow stopped: ${requestError.message}`);
+    }
+  }
+
+  async function signAndRetry(activeRequirements = requirements) {
+    try {
+      setPhase("signing");
+      appendLog("Agent prepared USDC payment signature for the protected resource.");
+
+      const signResponse = await fetch("/api/payments/sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payer: buyerAddress, requirements: activeRequirements })
+      });
+      const signed = await signResponse.json();
+      setSignature(signed.signature);
+
+      setPhase("unlocking");
+      appendLog("Agent retried the API call with X-PAYMENT.");
+
+      const unlockedResponse = await fetch("/api/premium-leads", {
+        headers: {
+          "X-PAYMENT": signed.encodedPayment ?? encodePayment({
+            payer: buyerAddress,
+            requirements: activeRequirements,
+            signature: signed.signature
+          })
+        }
+      });
+      const unlocked = await unlockedResponse.json();
+
+      if (!unlockedResponse.ok) {
+        throw new Error(unlocked.reason ?? "Payment verification failed.");
+      }
+
+      setReceipt(unlocked.receipt);
+      setLeads(unlocked.data);
+      setPhase("complete");
+      appendLog("Payment verified. Premium lead data unlocked.");
+    } catch (paymentError) {
+      setPhase("challenged");
+      setError(paymentError.message);
+      appendLog(`Unlock failed: ${paymentError.message}`);
+    }
+  }
+
+  return (
+    <main>
+      <section className="topbar">
+        <div>
+          <span className="eyebrow">x402 seller sandbox</span>
+          <h1>Payment-Aware Sandbox</h1>
+        </div>
+        <div className="statusPill">
+          <span className={paid ? "dot paid" : "dot"} />
+          {paid ? "Data unlocked" : "Payment required"}
+        </div>
+      </section>
+
+      <section className="workspace">
+        <div className="controlPanel">
+          <div className="panelHead">
+            <Bot size={24} />
+            <div>
+              <h2>Autonomous API Buyer</h2>
+              <p>{discovery?.description ?? "Discovering seller endpoint..."}</p>
+            </div>
+          </div>
+
+          <button className="primaryButton" onClick={requestPremiumLeadData} disabled={phase === "requesting" || phase === "signing" || phase === "unlocking"}>
+            {phase === "requesting" || phase === "signing" || phase === "unlocking" ? <Loader2 className="spin" size={19} /> : <Play size={19} />}
+            Request Premium Lead Data
+          </button>
+
+          <label className="toggleRow">
+            <input type="checkbox" checked={autonomous} onChange={event => setAutonomous(event.target.checked)} />
+            <span>Auto-sign sandbox USDC payment and retry</span>
+          </label>
+
+          {phase === "challenged" && (
+            <button className="secondaryButton" onClick={() => signAndRetry()}>
+              <KeyRound size={18} />
+              Sign Payment And Unlock
+            </button>
+          )}
+
+          {error && <div className="error">{error}</div>}
+
+          <div className="metrics">
+            <div>
+              <span>Price</span>
+              <strong>{requirements?.amount ?? "0.05"} USDC</strong>
+            </div>
+            <div>
+              <span>Network</span>
+              <strong>{requirements?.network ?? "base-sepolia"}</strong>
+            </div>
+            <div>
+              <span>Avg fit</span>
+              <strong>{totalFit || "--"}%</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="flowPanel">
+          <Step icon={Radar} title="Discover API" detail="/.well-known/x402.json publishes the paid endpoint" active={phase === "idle"} done={Boolean(discovery)} />
+          <Step icon={DatabaseZap} title="Request Protected Data" detail="Seller returns 402 instead of leads" active={phase === "requesting"} done={Boolean(requirements)} />
+          <Step icon={CircleDollarSign} title="Pay Automatically" detail="Agent signs the x402 payment payload" active={phase === "signing"} done={Boolean(signature)} />
+          <Step icon={ShieldCheck} title="Receive Protected Data" detail="Retry includes X-PAYMENT and unlocks leads" active={phase === "unlocking"} done={paid} />
+        </div>
+      </section>
+
+      <section className="dataGrid">
+        <div className="dataPanel">
+          <div className="sectionHead">
+            <h2>Premium Lead Data</h2>
+            {paid && <CheckCircle2 size={20} />}
+          </div>
+          <div className="leadList">
+            {leads.length ? (
+              leads.map(lead => (
+                <article className="lead" key={lead.id}>
+                  <div>
+                    <span>{lead.id}</span>
+                    <h3>{lead.company}</h3>
+                  </div>
+                  <p>{lead.intent}</p>
+                  <div className="leadMeta">
+                    <strong>{lead.contact}</strong>
+                    <span>{lead.budget}</span>
+                    <b>{lead.fit}% fit</b>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="emptyState">Protected data is waiting behind the payment challenge.</div>
+            )}
+          </div>
+        </div>
+
+        <div className="dataPanel">
+          <div className="sectionHead">
+            <h2>Protocol Trace</h2>
+          </div>
+          <pre>{JSON.stringify({ discovery: discovery?.links, requirements, receipt, signature: signature ? `${signature.slice(0, 18)}...` : "" }, null, 2)}</pre>
+          <div className="log">
+            {log.map(item => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<App />);

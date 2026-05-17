@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: payment-aware-sandbox
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: X402_PAYMENT_MODE
+        value: sandbox
+      - key: SELLER_ADDRESS
+        value: 0xYourWallet
+      - key: X402_NETWORK
+        value: eip155:84532
+      - key: X402_ASSET
+        value: USDC
+      - key: PRICE_USDC
+        value: "0.05"
