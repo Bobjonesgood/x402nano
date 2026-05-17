@@ -10,7 +10,7 @@ const PORT = Number(process.env.PORT ?? 4021);
 const HOST = process.env.HOST ?? "0.0.0.0";
 const PAYMENT_MODE = process.env.X402_PAYMENT_MODE ?? "sandbox";
 const FACILITATOR_SECRET = process.env.FACILITATOR_SECRET ?? "sandbox-facilitator-secret";
-const SELLER_ADDRESS = process.env.SELLER_ADDRESS ?? "0xSellerPremiumLeadDesk";
+const SELLER_ADDRESS = process.env.SELLER_ADDRESS ?? process.env.PARTNER_SELLER_ADDRESS ?? "0xSellerPremiumLeadDesk";
 const BUYER_ADDRESS = process.env.BUYER_ADDRESS ?? "0xAutonomousAgentWallet";
 const PRICE_USDC = process.env.PRICE_USDC ?? "0.05";
 const NETWORK = process.env.X402_NETWORK ?? "eip155:84532";
@@ -161,7 +161,7 @@ function sellerWalletStatus() {
     address: SELLER_ADDRESS,
     isValid,
     label: isValid ? "configured" : "placeholder",
-    message: isValid ? "Seller wallet is a valid EVM address." : "Set SELLER_ADDRESS to your real 0x seller wallet before real settlement."
+    message: isValid ? "Seller wallet is a valid EVM address." : "Set SELLER_ADDRESS or PARTNER_SELLER_ADDRESS to your real 0x seller wallet before real settlement."
   };
 }
 

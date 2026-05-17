@@ -92,7 +92,7 @@ X402_ASSET=USDC
 PRICE_USDC=0.05
 ```
 
-`SELLER_ADDRESS` should be your receiving wallet. In sandbox mode it can be a placeholder, but before real settlement it must be a valid EVM address:
+`SELLER_ADDRESS` should be your receiving wallet. `PARTNER_SELLER_ADDRESS` is also accepted as a fallback if your host already uses that name. In sandbox mode it can be a placeholder, but before real settlement it must be a valid EVM address:
 
 ```txt
 0x followed by 40 hexadecimal characters
