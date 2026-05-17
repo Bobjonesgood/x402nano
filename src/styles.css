@@ -156,6 +156,16 @@ h1 {
   margin-top: 12px;
 }
 
+.walletActions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.walletActions .secondaryButton {
+  min-width: 0;
+}
+
 .primaryButton:hover,
 .secondaryButton:hover {
   transform: translateY(-1px);
@@ -370,7 +380,8 @@ pre {
 
   .workspace,
   .dataGrid,
-  .flowPanel {
+  .flowPanel,
+  .walletActions {
     grid-template-columns: 1fr;
   }
 

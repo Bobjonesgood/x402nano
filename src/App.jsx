@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot, CheckCircle2, CircleDollarSign, DatabaseZap, KeyRound, Loader2, Play, Radar, ShieldCheck } from "lucide-react";
+import { Bot, CheckCircle2, CircleDollarSign, DatabaseZap, KeyRound, Loader2, Play, Radar, ShieldCheck, Wallet } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -23,6 +23,11 @@ function encodePayment(payment) {
   return btoa(JSON.stringify(payment)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+function shortAddress(address) {
+  if (!address) return "";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
 function App() {
   const [discovery, setDiscovery] = useState(null);
   const [phase, setPhase] = useState("idle");
@@ -33,8 +38,10 @@ function App() {
   const [log, setLog] = useState([]);
   const [error, setError] = useState("");
   const [autonomous, setAutonomous] = useState(true);
+  const [walletAddress, setWalletAddress] = useState("");
 
   const paid = Boolean(receipt);
+  const busy = phase === "requesting" || phase === "signing" || phase === "unlocking" || phase === "wallet";
 
   const totalFit = useMemo(() => {
     if (!leads.length) return 0;
@@ -53,6 +60,20 @@ function App() {
 
   function appendLog(message) {
     setLog(current => [`${new Date().toLocaleTimeString()}  ${message}`, ...current].slice(0, 8));
+  }
+
+  async function connectWallet() {
+    setError("");
+    if (!window.ethereum) {
+      setError("No browser wallet found. Open this page in Coinbase Wallet, MetaMask, or a wallet-enabled browser.");
+      return "";
+    }
+
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    const address = accounts?.[0] ?? "";
+    setWalletAddress(address);
+    appendLog(`Browser wallet connected: ${shortAddress(address)}.`);
+    return address;
   }
 
   async function requestPremiumLeadData() {
@@ -130,6 +151,79 @@ function App() {
     }
   }
 
+  async function requestWithBrowserWallet() {
+    setError("");
+    setLeads([]);
+    setReceipt(null);
+    setSignature("");
+    setRequirements(null);
+
+    try {
+      const payer = walletAddress || (await connectWallet());
+      if (!payer) return;
+
+      setPhase("requesting");
+      appendLog("Browser wallet buyer requested /api/premium-leads without payment.");
+      const firstResponse = await fetch("/api/premium-leads");
+      const paymentChallenge = await firstResponse.json();
+
+      if (firstResponse.status !== 402) {
+        throw new Error("Expected a 402 payment challenge from the seller API.");
+      }
+
+      const activeRequirements = paymentChallenge.paymentRequirements;
+      setRequirements(activeRequirements);
+      appendLog("Seller returned 402 challenge for browser wallet signing.");
+
+      setPhase("wallet");
+      const messageResponse = await fetch("/api/payments/browser-wallet-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payer, requirements: activeRequirements })
+      });
+      const messagePayload = await messageResponse.json();
+
+      if (!messageResponse.ok) {
+        throw new Error(messagePayload.reason ?? messagePayload.error ?? "Could not prepare wallet signing message.");
+      }
+
+      appendLog("Wallet signature requested.");
+      const walletSignature = await window.ethereum.request({
+        method: "personal_sign",
+        params: [messagePayload.message, payer]
+      });
+      setSignature(walletSignature);
+
+      setPhase("unlocking");
+      appendLog("Browser wallet signature captured. Retrying with X-PAYMENT.");
+      const unlockedResponse = await fetch("/api/premium-leads", {
+        headers: {
+          "X-PAYMENT": encodePayment({
+            payer,
+            requirements: activeRequirements,
+            signature: walletSignature,
+            signatureType: "browser-wallet",
+            message: messagePayload.message
+          })
+        }
+      });
+      const unlocked = await unlockedResponse.json();
+
+      if (!unlockedResponse.ok) {
+        throw new Error(unlocked.reason ?? "Wallet payment verification failed.");
+      }
+
+      setReceipt(unlocked.receipt);
+      setLeads(unlocked.data);
+      setPhase("complete");
+      appendLog("Browser wallet payment verified. Premium lead data unlocked.");
+    } catch (walletError) {
+      setPhase("idle");
+      setError(walletError.message);
+      appendLog(`Wallet flow stopped: ${walletError.message}`);
+    }
+  }
+
   return (
     <main>
       <section className="topbar">
@@ -153,10 +247,21 @@ function App() {
             </div>
           </div>
 
-          <button className="primaryButton" onClick={requestPremiumLeadData} disabled={phase === "requesting" || phase === "signing" || phase === "unlocking"}>
-            {phase === "requesting" || phase === "signing" || phase === "unlocking" ? <Loader2 className="spin" size={19} /> : <Play size={19} />}
+          <button className="primaryButton" onClick={requestPremiumLeadData} disabled={busy}>
+            {busy && phase !== "wallet" ? <Loader2 className="spin" size={19} /> : <Play size={19} />}
             Request Premium Lead Data
           </button>
+
+          <div className="walletActions">
+            <button className="secondaryButton" onClick={connectWallet} disabled={busy}>
+              <Wallet size={18} />
+              {walletAddress ? shortAddress(walletAddress) : "Connect Wallet"}
+            </button>
+            <button className="secondaryButton" onClick={requestWithBrowserWallet} disabled={busy}>
+              {phase === "wallet" ? <Loader2 className="spin" size={18} /> : <KeyRound size={18} />}
+              Pay With Browser Wallet
+            </button>
+          </div>
 
           <label className="toggleRow">
             <input type="checkbox" checked={autonomous} onChange={event => setAutonomous(event.target.checked)} />

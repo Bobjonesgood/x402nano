@@ -70,6 +70,21 @@ function canonicalPayment(requirements, payer = BUYER_ADDRESS) {
   ].join("|");
 }
 
+function walletPaymentMessage(requirements, payer = BUYER_ADDRESS) {
+  return [
+    "Payment-Aware Sandbox",
+    "Sign this message to authorize sandbox access.",
+    "",
+    `Payer: ${payer}`,
+    `Seller: ${requirements.payTo}`,
+    `Resource: ${requirements.resource}`,
+    `Amount: ${requirements.amount} ${requirements.asset}`,
+    `Network: ${requirements.network}`,
+    `Nonce: ${requirements.nonce}`,
+    `Expires: ${requirements.expiresAt}`
+  ].join("\n");
+}
+
 const paymentProvider =
   PAYMENT_MODE === "facilitator"
     ? createFacilitatorProvider({
@@ -78,7 +93,8 @@ const paymentProvider =
       })
     : createSandboxProvider({
         facilitatorSecret: FACILITATOR_SECRET,
-        canonicalPayment
+        canonicalPayment,
+        walletPaymentMessage
       });
 
 const leadSchema = {
@@ -122,7 +138,7 @@ function json(res, statusCode, body, extraHeaders = {}) {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,X-PAYMENT",
+    "Access-Control-Allow-Headers": "Content-Type,X-PAYMENT,PAYMENT-SIGNATURE",
     ...extraHeaders
   });
   res.end(JSON.stringify(body, null, 2));
@@ -513,6 +529,30 @@ const server = http.createServer(async (req, res) => {
       return json(res, signed.statusCode ?? 200, signed);
     } catch {
       return json(res, 400, { error: "Invalid payment signing request." });
+    }
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/payments/browser-wallet-message") {
+    try {
+      if (paymentProvider.mode !== "sandbox") {
+        return json(res, 501, {
+          error: "Browser wallet sandbox disabled",
+          reason: "Use a real x402 wallet client when the server runs in facilitator mode."
+        });
+      }
+
+      const body = await readBody(req);
+      const requirementsError = validateRequirements(body.requirements);
+      if (requirementsError) return json(res, 400, { error: requirementsError });
+      if (!body.payer) return json(res, 400, { error: "Payer wallet address is required." });
+
+      return json(res, 200, {
+        payer: body.payer,
+        requirements: body.requirements,
+        message: walletPaymentMessage(body.requirements, body.payer)
+      });
+    } catch {
+      return json(res, 400, { error: "Invalid browser wallet signing request." });
     }
   }
 

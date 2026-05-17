@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
+import { verifyMessage } from "viem";
 
-export function createSandboxProvider({ facilitatorSecret, canonicalPayment }) {
+export function createSandboxProvider({ facilitatorSecret, canonicalPayment, walletPaymentMessage }) {
   function sign(requirements, payer) {
     return crypto
       .createHmac("sha256", facilitatorSecret)
@@ -31,6 +32,27 @@ export function createSandboxProvider({ facilitatorSecret, canonicalPayment }) {
       };
     },
     async verifyAndSettle({ payment, requirements, payer }) {
+      if (payment.signatureType === "browser-wallet") {
+        const message = payment.message ?? walletPaymentMessage(requirements, payer);
+        const valid = await verifyMessage({
+          address: payer,
+          message,
+          signature: payment.signature
+        });
+
+        if (!valid) {
+          return { ok: false, reason: "Browser wallet signature failed verification." };
+        }
+
+        return {
+          ok: true,
+          settlement: {
+            mode: "browser-wallet-sandbox",
+            transaction: `wallet-sandbox:${crypto.randomUUID()}`
+          }
+        };
+      }
+
       const expected = sign(requirements, payer);
       const signature = payment.signature ?? "";
 
