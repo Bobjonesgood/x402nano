@@ -10,6 +10,12 @@ The app demonstrates:
 - sandbox settlement today
 - facilitator settlement boundary for real x402 wiring
 
+Start with the project map:
+
+```txt
+PROJECT_INDEX.md
+```
+
 ## Demo Brief
 
 This project is a public proof that APIs can become payment-aware resources for agents and wallets.
