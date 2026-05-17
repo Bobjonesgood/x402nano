@@ -99,6 +99,35 @@ h1 {
   padding: 22px;
 }
 
+.modeTabs {
+  background: #edf3ee;
+  border: 1px solid #dce5dc;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 18px;
+  padding: 4px;
+}
+
+.modeTabs button {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: #4c5f55;
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 800;
+  min-height: 38px;
+  padding: 8px;
+}
+
+.modeTabs button.selected {
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(28, 41, 32, 0.08);
+  color: #174f43;
+}
+
 .panelHead,
 .sectionHead {
   align-items: center;
@@ -164,6 +193,33 @@ h1 {
 
 .walletActions .secondaryButton {
   min-width: 0;
+}
+
+.traceSummary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.traceSummary div {
+  background: #f5f8f3;
+  border: 1px solid #e1e7df;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.traceSummary span {
+  color: #68776f;
+  display: block;
+  font-size: 0.78rem;
+  margin-bottom: 4px;
+}
+
+.traceSummary strong {
+  color: #20372e;
+  display: block;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
 }
 
 .primaryButton:hover,
@@ -429,7 +485,12 @@ pre {
   .workspace,
   .dataGrid,
   .flowPanel,
-  .walletActions {
+  .walletActions,
+  .traceSummary {
+    grid-template-columns: 1fr;
+  }
+
+  .modeTabs {
     grid-template-columns: 1fr;
   }
 

@@ -67,6 +67,7 @@ function ReceiptPanel({ receipt }) {
 
 function App() {
   const [discovery, setDiscovery] = useState(null);
+  const [demoMode, setDemoMode] = useState("agent");
   const [phase, setPhase] = useState("idle");
   const [requirements, setRequirements] = useState(null);
   const [signature, setSignature] = useState("");
@@ -79,6 +80,23 @@ function App() {
 
   const paid = Boolean(receipt);
   const busy = phase === "requesting" || phase === "signing" || phase === "unlocking" || phase === "wallet";
+  const modeCopy = {
+    agent: {
+      title: "Auto Agent",
+      heading: "Autonomous API Buyer",
+      body: "Discover, price, pay, retry, and receive protected data without a wallet popup."
+    },
+    wallet: {
+      title: "Browser Wallet",
+      heading: "Browser Wallet Buyer",
+      body: "Connect a wallet, sign the payment authorization, and unlock the protected endpoint."
+    },
+    trace: {
+      title: "Protocol Trace",
+      heading: "Protocol Trace",
+      body: "Inspect the discovery links, payment requirements, receipt, signature, and event log."
+    }
+  };
 
   const totalFit = useMemo(() => {
     if (!leads.length) return 0;
@@ -276,40 +294,78 @@ function App() {
 
       <section className="workspace">
         <div className="controlPanel">
+          <div className="modeTabs" role="tablist" aria-label="Demo mode">
+            {Object.entries(modeCopy).map(([mode, copy]) => (
+              <button
+                aria-selected={demoMode === mode}
+                className={demoMode === mode ? "selected" : ""}
+                key={mode}
+                onClick={() => setDemoMode(mode)}
+                role="tab"
+                type="button"
+              >
+                {copy.title}
+              </button>
+            ))}
+          </div>
+
           <div className="panelHead">
-            <Bot size={24} />
+            {demoMode === "wallet" ? <Wallet size={24} /> : demoMode === "trace" ? <ReceiptText size={24} /> : <Bot size={24} />}
             <div>
-              <h2>Autonomous API Buyer</h2>
-              <p>{discovery?.description ?? "Discovering seller endpoint..."}</p>
+              <h2>{modeCopy[demoMode].heading}</h2>
+              <p>{discovery ? modeCopy[demoMode].body : "Discovering seller endpoint..."}</p>
             </div>
           </div>
 
-          <button className="primaryButton" onClick={requestPremiumLeadData} disabled={busy}>
-            {busy && phase !== "wallet" ? <Loader2 className="spin" size={19} /> : <Play size={19} />}
-            Request Premium Lead Data
-          </button>
+          {demoMode === "agent" && (
+            <>
+              <button className="primaryButton" onClick={requestPremiumLeadData} disabled={busy}>
+                {busy && phase !== "wallet" ? <Loader2 className="spin" size={19} /> : <Play size={19} />}
+                Request Premium Lead Data
+              </button>
 
-          <div className="walletActions">
-            <button className="secondaryButton" onClick={connectWallet} disabled={busy}>
-              <Wallet size={18} />
-              {walletAddress ? shortAddress(walletAddress) : "Connect Wallet"}
-            </button>
-            <button className="secondaryButton" onClick={requestWithBrowserWallet} disabled={busy}>
-              {phase === "wallet" ? <Loader2 className="spin" size={18} /> : <KeyRound size={18} />}
-              Pay With Browser Wallet
-            </button>
-          </div>
+              <label className="toggleRow">
+                <input type="checkbox" checked={autonomous} onChange={event => setAutonomous(event.target.checked)} />
+                <span>Auto-sign sandbox USDC payment and retry</span>
+              </label>
 
-          <label className="toggleRow">
-            <input type="checkbox" checked={autonomous} onChange={event => setAutonomous(event.target.checked)} />
-            <span>Auto-sign sandbox USDC payment and retry</span>
-          </label>
+              {phase === "challenged" && (
+                <button className="secondaryButton" onClick={() => signAndRetry()}>
+                  <KeyRound size={18} />
+                  Sign Payment And Unlock
+                </button>
+              )}
+            </>
+          )}
 
-          {phase === "challenged" && (
-            <button className="secondaryButton" onClick={() => signAndRetry()}>
-              <KeyRound size={18} />
-              Sign Payment And Unlock
-            </button>
+          {demoMode === "wallet" && (
+            <div className="walletActions">
+              <button className="secondaryButton" onClick={connectWallet} disabled={busy}>
+                <Wallet size={18} />
+                {walletAddress ? shortAddress(walletAddress) : "Connect Wallet"}
+              </button>
+              <button className="primaryButton" onClick={requestWithBrowserWallet} disabled={busy}>
+                {phase === "wallet" ? <Loader2 className="spin" size={18} /> : <KeyRound size={18} />}
+                Pay With Browser Wallet
+              </button>
+            </div>
+          )}
+
+          {demoMode === "trace" && (
+            <div className="traceSummary">
+              <div>
+                <span>Discovery</span>
+                <strong>{discovery?.links?.self ? "Ready" : "Loading"}</strong>
+              </div>
+              <div>
+                <span>Challenge</span>
+                <strong>{requirements?.nonce ? "Issued" : "--"}</strong>
+              </div>
+              <div>
+                <span>Receipt</span>
+                <strong>{receipt?.id ? shortValue(receipt.id) : "--"}</strong>
+              </div>
+            </div>
           )}
 
           {error && <div className="error">{error}</div>}
