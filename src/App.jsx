@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot, CheckCircle2, CircleDollarSign, DatabaseZap, KeyRound, Loader2, Play, Radar, ShieldCheck, Wallet } from "lucide-react";
+import { Bot, CheckCircle2, CircleDollarSign, DatabaseZap, KeyRound, Loader2, Play, Radar, ReceiptText, ShieldCheck, Wallet } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -26,6 +26,43 @@ function encodePayment(payment) {
 function shortAddress(address) {
   if (!address) return "";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function shortValue(value) {
+  if (!value) return "--";
+  if (value.length <= 18) return value;
+  return `${value.slice(0, 10)}...${value.slice(-6)}`;
+}
+
+function ReceiptPanel({ receipt }) {
+  if (!receipt) return null;
+
+  const rows = [
+    ["Receipt", shortValue(receipt.id)],
+    ["Payer", shortAddress(receipt.payer) || receipt.payer],
+    ["Seller", shortAddress(receipt.seller) || receipt.seller],
+    ["Amount", `${receipt.amount} ${receipt.asset}`],
+    ["Network", receipt.network],
+    ["Settlement", receipt.mode],
+    ["Transaction", shortValue(receipt.transaction)]
+  ];
+
+  return (
+    <div className="receiptPanel">
+      <div className="receiptTitle">
+        <ReceiptText size={19} />
+        <h3>Wallet Receipt</h3>
+      </div>
+      <div className="receiptGrid">
+        {rows.map(([label, value]) => (
+          <div className="receiptRow" key={label}>
+            <span>{label}</span>
+            <strong>{value || "--"}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function App() {
@@ -333,6 +370,7 @@ function App() {
           <div className="sectionHead">
             <h2>Protocol Trace</h2>
           </div>
+          <ReceiptPanel receipt={receipt} />
           <pre>{JSON.stringify({ discovery: discovery?.links, requirements, receipt, signature: signature ? `${signature.slice(0, 18)}...` : "" }, null, 2)}</pre>
           <div className="log">
             {log.map(item => (
