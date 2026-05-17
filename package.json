@@ -11,7 +11,8 @@
     "preview": "vite preview --host 127.0.0.1",
     "start": "node server/index.js",
     "agent:buyer": "node scripts/agent-buyer.js",
-    "smoke": "node scripts/smoke-test.js"
+    "smoke": "node scripts/smoke-test.js",
+    "demo:report": "node scripts/generate-demo-report.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",

@@ -36,6 +36,12 @@ Run the deploy smoke test:
 npm.cmd run smoke
 ```
 
+Generate a shareable proof report:
+
+```powershell
+npm.cmd run demo:report
+```
+
 ## Public Sandbox Deploy
 
 Use these environment variables first:
@@ -66,6 +72,7 @@ After deploy, test:
 $env:AGENT_API_ORIGIN="https://your-public-url"
 npm.cmd run smoke
 npm.cmd run agent:buyer
+npm.cmd run demo:report
 ```
 
 ## Docker
