@@ -16,6 +16,12 @@ Start with the project map:
 PROJECT_INDEX.md
 ```
 
+Release snapshot:
+
+```txt
+RELEASE_NOTES.md
+```
+
 ## Demo Brief
 
 This project is a public proof that APIs can become payment-aware resources for agents and wallets.
@@ -70,6 +76,12 @@ Run the deploy smoke test:
 
 ```powershell
 npm.cmd run smoke
+```
+
+Check release/build metadata:
+
+```txt
+/api/version
 ```
 
 Generate a shareable proof report:

@@ -72,6 +72,12 @@ Real settlement preflight:
 REAL_SETTLEMENT_DRY_RUN.md
 ```
 
+Release notes:
+
+```txt
+RELEASE_NOTES.md
+```
+
 ## 4. Operating Commands
 
 Check live readiness:
@@ -104,6 +110,12 @@ Build locally:
 
 ```powershell
 npm.cmd run build
+```
+
+Inspect release/build metadata:
+
+```txt
+https://x402nano.onrender.com/api/version
 ```
 
 ## 5. Current Safe State
@@ -150,6 +162,7 @@ DEMO_REPORT.md                      plain-English proof/pitch report
 RUNBOOK.md                          operating checklist
 REAL_X402_SETUP.md                  settlement setup notes
 REAL_SETTLEMENT_DRY_RUN.md          preflight before real settlement
+RELEASE_NOTES.md                    v0.1.0 release snapshot
 ```
 
 ## 8. What To Do Next

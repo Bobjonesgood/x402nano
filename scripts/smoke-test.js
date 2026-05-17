@@ -26,6 +26,12 @@ async function run() {
   assert(health.body.status === "ok", "health status was not ok");
   ok("health", health.body.paymentMode);
 
+  const version = await fetchJson("/api/version");
+  assert(version.response.status === 200, `version returned ${version.response.status}`);
+  assert(version.body.release?.version, "version missing release.version");
+  assert(version.body.payment?.mode, "version missing payment.mode");
+  ok("version", `${version.body.release.version} / ${version.body.payment.mode}`);
+
   const manifest = await fetchJson("/.well-known/x402.json");
   assert(manifest.response.status === 200, `manifest returned ${manifest.response.status}`);
   assert(manifest.body.links?.paidResource, "manifest missing links.paidResource");
@@ -79,4 +85,3 @@ run().catch(error => {
   console.error(`\nSmoke test failed: ${error.message}`);
   process.exitCode = 1;
 });
-

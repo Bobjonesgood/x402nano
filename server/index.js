@@ -16,6 +16,8 @@ const PRICE_USDC = process.env.PRICE_USDC ?? "0.05";
 const NETWORK = process.env.X402_NETWORK ?? "eip155:84532";
 const ASSET = process.env.X402_ASSET ?? "USDC";
 const API_NAME = "Payment-Aware Premium Lead API";
+const RELEASE_VERSION = process.env.RELEASE_VERSION ?? "0.1.0";
+const RELEASE_NAME = process.env.RELEASE_NAME ?? "Payment-Aware Sandbox Proof";
 const PAYMENT_HEADER = "X-PAYMENT";
 const PAYMENT_TTL_MS = 5 * 60 * 1000;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -162,6 +164,49 @@ function sellerWalletStatus() {
     isValid,
     label: isValid ? "configured" : "placeholder",
     message: isValid ? "Seller wallet is a valid EVM address." : "Set SELLER_ADDRESS or PARTNER_SELLER_ADDRESS to your real 0x seller wallet before real settlement."
+  };
+}
+
+function buildInfo() {
+  return {
+    commit:
+      process.env.RENDER_GIT_COMMIT ??
+      process.env.GIT_COMMIT ??
+      process.env.COMMIT_SHA ??
+      process.env.SOURCE_VERSION ??
+      "unknown",
+    branch:
+      process.env.RENDER_GIT_BRANCH ??
+      process.env.GIT_BRANCH ??
+      process.env.BRANCH ??
+      "unknown",
+    service:
+      process.env.RENDER_SERVICE_NAME ??
+      process.env.SERVICE_NAME ??
+      "local",
+    environment:
+      process.env.NODE_ENV ??
+      "development"
+  };
+}
+
+function versionPayload() {
+  return {
+    status: "ok",
+    service: API_NAME,
+    release: {
+      version: RELEASE_VERSION,
+      name: RELEASE_NAME
+    },
+    payment: {
+      mode: paymentProvider.mode,
+      settlement: paymentProvider.settlement,
+      network: NETWORK,
+      asset: ASSET,
+      amount: PRICE_USDC,
+      sellerWallet: sellerWalletStatus()
+    },
+    build: buildInfo()
   };
 }
 
@@ -394,6 +439,7 @@ function apiDiscovery(req) {
     links: {
       self: `${origin}/.well-known/x402.json`,
       health: `${origin}/api/health`,
+      version: `${origin}/api/version`,
       pricing: `${origin}/api/pricing`,
       schema: `${origin}/api/schema`,
       paidResource: `${origin}/api/premium-leads`,
@@ -490,6 +536,10 @@ const server = http.createServer(async (req, res) => {
       issuedQuotes: issuedRequirements.size,
       settledPayments: payments.size
     });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/version") {
+    return json(res, 200, versionPayload());
   }
 
   if (req.method === "GET" && url.pathname === "/api/pricing") {
