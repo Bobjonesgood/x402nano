@@ -10,6 +10,36 @@ The app demonstrates:
 - sandbox settlement today
 - facilitator settlement boundary for real x402 wiring
 
+## Demo Brief
+
+This project is a public proof that APIs can become payment-aware resources for agents and wallets.
+
+### What This Proves
+
+An API can publish its price and payment rules, reject unpaid access with `402 Payment Required`, accept a payment payload on retry, and unlock protected data without a human-operated checkout page.
+
+### How Agents Discover The API
+
+Agents read:
+
+```txt
+/.well-known/x402.json
+```
+
+That manifest exposes the protected endpoint, price, network, asset, payment header, schema, and receipt path.
+
+### How Payment Unlock Works
+
+The buyer calls `/api/premium-leads` and receives `402`. The buyer then creates a payment payload, retries with `X-PAYMENT`, and receives premium lead data plus a receipt.
+
+### What Is Sandbox Now
+
+The current public demo uses simulated USDC settlement and browser-wallet message signatures. No real funds move in sandbox mode. This keeps the demo safe while preserving the real x402 shape.
+
+### What Becomes Real x402 Settlement Next
+
+Switch `X402_PAYMENT_MODE` to `facilitator`, add a facilitator URL, use a funded Base Sepolia buyer wallet, and keep the same discovery, `402`, `X-PAYMENT`, and receipt flow.
+
 ## Run Locally
 
 ```powershell

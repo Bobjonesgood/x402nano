@@ -66,6 +66,35 @@ h1 {
   padding: 12px 16px;
 }
 
+.proofStrip {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0 auto 18px;
+  max-width: 1180px;
+}
+
+.proofStrip div {
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid #dce3db;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.proofStrip span {
+  color: #68776f;
+  display: block;
+  font-size: 0.74rem;
+  margin-bottom: 4px;
+}
+
+.proofStrip strong {
+  color: #20372e;
+  display: block;
+  font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
 .dot {
   background: #d8694c;
   border-radius: 999px;
@@ -486,7 +515,8 @@ pre {
   .dataGrid,
   .flowPanel,
   .walletActions,
-  .traceSummary {
+  .traceSummary,
+  .proofStrip {
     grid-template-columns: 1fr;
   }
 

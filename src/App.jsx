@@ -292,6 +292,29 @@ function App() {
         </div>
       </section>
 
+      <section className="proofStrip">
+        <div>
+          <span>Proves</span>
+          <strong>Machine-payable API access</strong>
+        </div>
+        <div>
+          <span>Discovery</span>
+          <strong>/.well-known/x402.json</strong>
+        </div>
+        <div>
+          <span>Unlock</span>
+          <strong>402 then X-PAYMENT retry</strong>
+        </div>
+        <div>
+          <span>Now</span>
+          <strong>Sandbox USDC settlement</strong>
+        </div>
+        <div>
+          <span>Next</span>
+          <strong>Base Sepolia facilitator</strong>
+        </div>
+      </section>
+
       <section className="workspace">
         <div className="controlPanel">
           <div className="modeTabs" role="tablist" aria-label="Demo mode">
