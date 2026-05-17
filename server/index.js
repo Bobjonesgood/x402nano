@@ -131,6 +131,12 @@ function requestUrl(req) {
   return new URL(req.url, `http://${req.headers.host}`);
 }
 
+function publicOrigin(req) {
+  const proto = req.headers["x-forwarded-proto"]?.split(",")[0]?.trim() ?? "http";
+  const host = req.headers["x-forwarded-host"]?.split(",")[0]?.trim() ?? req.headers.host;
+  return `${proto}://${host}`;
+}
+
 function clientId(req) {
   return req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "unknown";
 }
@@ -285,7 +291,7 @@ function readBody(req) {
 }
 
 function apiDiscovery(req) {
-  const origin = `http://${req.headers.host}`;
+  const origin = publicOrigin(req);
   return {
     name: API_NAME,
     description: "An x402-ready seller endpoint that autonomous agents can discover, price, pay, retry, and unlock.",
