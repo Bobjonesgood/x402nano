@@ -162,12 +162,8 @@ REAL_X402_SETUP.md
 
 ## 10. Next Bigger Step
 
-Before touching facilitator mode, create and follow a real settlement dry-run checklist:
+Before touching facilitator mode, follow the real settlement dry-run checklist:
 
-- dedicated Base Sepolia buyer wallet
-- Base Sepolia ETH for gas
-- Base Sepolia test USDC
-- facilitator URL confirmed
-- seller wallet confirmed
-- `npm.cmd run settlement:check` passes in facilitator mode
-- `npm.cmd run agent:real` tested with only testnet funds
+```txt
+REAL_SETTLEMENT_DRY_RUN.md
+```

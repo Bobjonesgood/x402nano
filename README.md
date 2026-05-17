@@ -92,6 +92,12 @@ Operate the demo with the checklist:
 RUNBOOK.md
 ```
 
+Prepare for testnet settlement without flipping the switch:
+
+```txt
+REAL_SETTLEMENT_DRY_RUN.md
+```
+
 Run the real x402 buyer path after switching the server to facilitator mode:
 
 ```powershell
