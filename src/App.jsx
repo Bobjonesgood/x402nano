@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot, CheckCircle2, CircleDollarSign, DatabaseZap, KeyRound, Loader2, Play, Radar, ReceiptText, ShieldCheck, Wallet } from "lucide-react";
+import { Bot, CheckCircle2, CircleDollarSign, ClipboardCheck, DatabaseZap, KeyRound, Loader2, Play, Radar, ReceiptText, ShieldCheck, Wallet } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -61,6 +61,49 @@ function ReceiptPanel({ receipt }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function ReadinessPanel({ discovery }) {
+  const x402 = discovery?.x402;
+  const sellerWallet = x402?.sellerWallet;
+  const sandboxMode = x402?.paymentMode === "sandbox";
+  const facilitatorMode = x402?.paymentMode === "facilitator";
+  const networkReady = x402?.supportedNetworks?.includes("eip155:84532");
+  const assetReady = x402?.supportedAssets?.includes("USDC");
+  const sellerReady = sellerWallet?.isValid === true;
+  const facilitatorReady = facilitatorMode && Boolean(x402?.provider?.facilitatorUrl);
+
+  const checks = [
+    ["Mode", x402?.paymentMode ?? "loading", sandboxMode || facilitatorMode],
+    ["Seller", sellerReady ? shortAddress(sellerWallet.address) : "placeholder", sellerReady],
+    ["Network", networkReady ? "Base Sepolia" : x402?.supportedNetworks?.[0] ?? "loading", Boolean(networkReady)],
+    ["Asset", assetReady ? "USDC" : x402?.supportedAssets?.[0] ?? "loading", Boolean(assetReady)],
+    ["Real Settlement", facilitatorReady ? "ready" : "off", facilitatorReady]
+  ];
+
+  return (
+    <div className="readinessPanel">
+      <div className="readinessTitle">
+        <ClipboardCheck size={18} />
+        <h3>Settlement Readiness</h3>
+      </div>
+      <div className="readinessGrid">
+        {checks.map(([label, value, ready]) => (
+          <div className={ready ? "ready" : "waiting"} key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
+      </div>
+      <p>
+        {facilitatorReady
+          ? "Facilitator mode is advertising real settlement."
+          : sandboxMode
+            ? "Sandbox is healthy. Flip facilitator mode only after wallet and facilitator testing."
+            : "Discovery is loading the current seller configuration."}
+      </p>
     </div>
   );
 }
@@ -433,6 +476,8 @@ function App() {
               Seller wallet is still a placeholder. Set <strong>SELLER_ADDRESS</strong> in Render before real settlement.
             </div>
           )}
+
+          <ReadinessPanel discovery={discovery} />
 
           <div className="metrics">
             <div>
