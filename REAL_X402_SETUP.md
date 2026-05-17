@@ -59,6 +59,24 @@ npm.cmd run agent:real
 
 Use a dedicated test wallet only. Do not use a mainnet wallet/private key for local experiments.
 
+## Readiness Check
+
+Before flipping the public app from sandbox to facilitator mode, run:
+
+```powershell
+$env:AGENT_API_ORIGIN="https://x402nano.onrender.com"
+npm.cmd run settlement:check
+```
+
+The checker reads `/api/health`, `/.well-known/x402.json`, and `/api/pricing`, then reports whether the seller wallet, Base Sepolia network, USDC asset, facilitator URL, sandbox signer, and local buyer-agent variables are ready.
+
+Current expected public-demo result:
+
+- Sandbox demo healthy.
+- Real settlement not enabled yet.
+- `PARTNER_SELLER_ADDRESS` or `SELLER_ADDRESS` must be a real `0x...` wallet before facilitator settlement.
+- `BUYER_PRIVATE_KEY` and `BASE_SEPOLIA_RPC_URL` are only needed on the machine running `npm.cmd run agent:real`.
+
 ## Mainnet Flip
 
 After testnet validation:

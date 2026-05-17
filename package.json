@@ -13,7 +13,8 @@
     "agent:buyer": "node scripts/agent-buyer.js",
     "smoke": "node scripts/smoke-test.js",
     "demo:report": "node scripts/generate-demo-report.js",
-    "agent:real": "node scripts/real-x402-buyer.js"
+    "agent:real": "node scripts/real-x402-buyer.js",
+    "settlement:check": "node scripts/settlement-readiness.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",
