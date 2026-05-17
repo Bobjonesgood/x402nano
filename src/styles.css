@@ -285,7 +285,8 @@ h1 {
   width: 18px;
 }
 
-.error {
+.error,
+.warning {
   background: #fff0eb;
   border: 1px solid #f1b39e;
   border-radius: 8px;
@@ -294,10 +295,16 @@ h1 {
   padding: 12px;
 }
 
+.warning {
+  background: #fff8df;
+  border-color: #e7cb75;
+  color: #6b5216;
+}
+
 .metrics {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   margin-top: 20px;
 }
 

@@ -22,6 +22,7 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 90;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.resolve(__dirname, "../dist");
+const EVM_ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
 
 const premiumLeads = [
   {
@@ -152,6 +153,16 @@ function publicOrigin(req) {
   const proto = req.headers["x-forwarded-proto"]?.split(",")[0]?.trim() ?? "http";
   const host = req.headers["x-forwarded-host"]?.split(",")[0]?.trim() ?? req.headers.host;
   return `${proto}://${host}`;
+}
+
+function sellerWalletStatus() {
+  const isValid = EVM_ADDRESS_PATTERN.test(SELLER_ADDRESS);
+  return {
+    address: SELLER_ADDRESS,
+    isValid,
+    label: isValid ? "configured" : "placeholder",
+    message: isValid ? "Seller wallet is a valid EVM address." : "Set SELLER_ADDRESS to your real 0x seller wallet before real settlement."
+  };
 }
 
 function clientId(req) {
@@ -377,7 +388,8 @@ function apiDiscovery(req) {
       paymentHeader: PAYMENT_HEADER,
       supportedSchemes: ["exact"],
       supportedNetworks: [NETWORK],
-      supportedAssets: [ASSET]
+      supportedAssets: [ASSET],
+      sellerWallet: sellerWalletStatus()
     },
     links: {
       self: `${origin}/.well-known/x402.json`,
@@ -473,6 +485,7 @@ const server = http.createServer(async (req, res) => {
       mode: "sandbox",
       paymentMode: paymentProvider.mode,
       settlement: paymentProvider.settlement,
+      sellerWallet: sellerWalletStatus(),
       uptimeSeconds: Math.floor(process.uptime()),
       issuedQuotes: issuedRequirements.size,
       settledPayments: payments.size
@@ -490,6 +503,7 @@ const server = http.createServer(async (req, res) => {
       paymentHeader: PAYMENT_HEADER,
       quoteTtlSeconds: Math.floor(PAYMENT_TTL_MS / 1000),
       paymentMode: paymentProvider.mode,
+      sellerWallet: sellerWalletStatus(),
       provider: paymentProvider.describe()
     });
   }

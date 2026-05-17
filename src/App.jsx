@@ -80,6 +80,7 @@ function App() {
 
   const paid = Boolean(receipt);
   const busy = phase === "requesting" || phase === "signing" || phase === "unlocking" || phase === "wallet";
+  const sellerWallet = discovery?.x402?.sellerWallet;
   const modeCopy = {
     agent: {
       title: "Auto Agent",
@@ -427,6 +428,12 @@ function App() {
 
           {error && <div className="error">{error}</div>}
 
+          {sellerWallet && !sellerWallet.isValid && (
+            <div className="warning">
+              Seller wallet is still a placeholder. Set <strong>SELLER_ADDRESS</strong> in Render before real settlement.
+            </div>
+          )}
+
           <div className="metrics">
             <div>
               <span>Price</span>
@@ -439,6 +446,10 @@ function App() {
             <div>
               <span>Avg fit</span>
               <strong>{totalFit || "--"}%</strong>
+            </div>
+            <div>
+              <span>Seller</span>
+              <strong>{sellerWallet?.isValid ? shortAddress(sellerWallet.address) : "placeholder"}</strong>
             </div>
           </div>
         </div>
