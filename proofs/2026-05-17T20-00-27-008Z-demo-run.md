@@ -1,0 +1,50 @@
+# Payment-Aware Sandbox Demo Run
+
+Generated: 2026-05-17T20:00:27.008Z
+
+Target: https://x402nano.onrender.com
+
+## Executive Summary
+
+This run proves that a buyer agent can discover a paid API, receive a `402 Payment Required` challenge, create a sandbox payment payload, retry with `X-PAYMENT`, and receive protected premium lead data plus a receipt.
+
+## Live Configuration
+
+- API: Payment-Aware Premium Lead API
+- Payment mode: sandbox
+- Settlement: sandbox-simulated
+- Price: 0.05 USDC
+- Network: eip155:84532
+- Seller wallet: 0x4cc3...52d3
+- Paid endpoint: https://x402nano.onrender.com/api/premium-leads
+- Payment header: X-PAYMENT
+
+## Proof Steps
+
+| Step | Status | Proof |
+| --- | --- | --- |
+| Discover seller API | 200 | sandbox / sandbox-simulated |
+| Request protected endpoint | 402 | quoted 0.05 USDC |
+| Create payment payload | 200 | X-PAYMENT created |
+| Retry with X-PAYMENT | 200 | 3 protected records unlocked |
+
+## Receipt
+
+- Receipt: f4bf97648d6109b5
+- Payer: 0xAutonomousAgentWallet
+- Seller: 0x4cc3...52d3
+- Amount: 0.05 USDC
+- Network: eip155:84532
+- Settlement mode: sandbox-simulated
+- Transaction: sandbox:e7...4a1da0
+- Settled at: 2026-05-17T20:00:27.208Z
+
+## Protected Data Received
+
+- Northstar Robotics | Maya Chen | 94% fit | Evaluating autonomous procurement agents
+- LedgerFlow Ops | Darius Cole | 89% fit | Needs pay-per-call API monetization
+- SignalFoundry AI | Elena Price | 91% fit | Building agent-discoverable data feeds
+
+## Result
+
+Machine-payable API flow complete. The current run is sandbox settlement, so no real funds moved. The same discovery and retry contract is ready for facilitator settlement testing later.

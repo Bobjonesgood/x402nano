@@ -13,6 +13,7 @@
     "agent:buyer": "node scripts/agent-buyer.js",
     "smoke": "node scripts/smoke-test.js",
     "demo:report": "node scripts/generate-demo-report.js",
+    "demo:record": "node scripts/record-demo-run.js",
     "agent:real": "node scripts/real-x402-buyer.js",
     "settlement:check": "node scripts/settlement-readiness.js"
   },

@@ -72,6 +72,14 @@ Generate a shareable proof report:
 npm.cmd run demo:report
 ```
 
+Record a markdown proof transcript:
+
+```powershell
+npm.cmd run demo:record
+```
+
+This writes `proofs/latest-demo-run.md` and a timestamped archive in `proofs/`.
+
 Read the plain-English demo report:
 
 ```txt
