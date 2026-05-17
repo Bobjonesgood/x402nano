@@ -113,6 +113,40 @@ function App() {
       .catch(() => setError("Could not reach the seller server."));
   }, []);
 
+  useEffect(() => {
+    if (!window.ethereum) return;
+
+    let mounted = true;
+
+    window.ethereum
+      .request({ method: "eth_accounts" })
+      .then(accounts => {
+        const address = accounts?.[0] ?? "";
+        if (mounted && address) {
+          setWalletAddress(address);
+          appendLog(`Browser wallet restored: ${shortAddress(address)}.`);
+        }
+      })
+      .catch(() => {});
+
+    function handleAccountsChanged(accounts) {
+      const address = accounts?.[0] ?? "";
+      setWalletAddress(address);
+      if (address) {
+        appendLog(`Browser wallet connected: ${shortAddress(address)}.`);
+      } else {
+        appendLog("Browser wallet disconnected.");
+      }
+    }
+
+    window.ethereum.on?.("accountsChanged", handleAccountsChanged);
+
+    return () => {
+      mounted = false;
+      window.ethereum.removeListener?.("accountsChanged", handleAccountsChanged);
+    };
+  }, []);
+
   function appendLog(message) {
     setLog(current => [`${new Date().toLocaleTimeString()}  ${message}`, ...current].slice(0, 8));
   }
