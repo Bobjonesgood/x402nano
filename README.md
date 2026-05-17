@@ -22,6 +22,12 @@ Release snapshot:
 RELEASE_NOTES.md
 ```
 
+Trust statement:
+
+```txt
+TRUST.md
+```
+
 ## Demo Brief
 
 This project is a public proof that APIs can become payment-aware resources for agents and wallets.

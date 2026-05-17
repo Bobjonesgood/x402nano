@@ -78,6 +78,12 @@ Release notes:
 RELEASE_NOTES.md
 ```
 
+Trust statement:
+
+```txt
+TRUST.md
+```
+
 ## 4. Operating Commands
 
 Check live readiness:
@@ -163,6 +169,7 @@ RUNBOOK.md                          operating checklist
 REAL_X402_SETUP.md                  settlement setup notes
 REAL_SETTLEMENT_DRY_RUN.md          preflight before real settlement
 RELEASE_NOTES.md                    v0.1.0 release snapshot
+TRUST.md                            proof boundaries and verification statement
 ```
 
 ## 8. What To Do Next
