@@ -5,10 +5,6 @@ const apiOrigin = (process.env.AGENT_API_ORIGIN ?? DEFAULT_API_ORIGIN).replace(/
 const buyer = process.env.AGENT_BUYER_ADDRESS ?? DEFAULT_BUYER;
 const externalPayment = process.env.X402_PAYMENT;
 
-function absoluteUrl(urlOrPath) {
-  return new URL(urlOrPath, apiOrigin).toString();
-}
-
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, options);
   const text = await response.text();
@@ -104,4 +100,3 @@ run().catch(error => {
   console.error(`\nAgent buyer failed: ${error.message}`);
   process.exitCode = 1;
 });
-

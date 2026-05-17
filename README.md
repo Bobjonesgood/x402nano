@@ -30,6 +30,12 @@ Run the autonomous buyer:
 npm.cmd run agent:buyer
 ```
 
+Run the deploy smoke test:
+
+```powershell
+npm.cmd run smoke
+```
+
 ## Public Sandbox Deploy
 
 Use these environment variables first:
@@ -58,7 +64,15 @@ After deploy, test:
 
 ```powershell
 $env:AGENT_API_ORIGIN="https://your-public-url"
+npm.cmd run smoke
 npm.cmd run agent:buyer
+```
+
+## Docker
+
+```powershell
+docker build -t payment-aware-sandbox .
+docker run --rm -p 4021:4021 payment-aware-sandbox
 ```
 
 ## Real Settlement
