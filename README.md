@@ -72,6 +72,12 @@ Generate a shareable proof report:
 npm.cmd run demo:report
 ```
 
+Read the plain-English demo report:
+
+```txt
+DEMO_REPORT.md
+```
+
 Run the real x402 buyer path after switching the server to facilitator mode:
 
 ```powershell

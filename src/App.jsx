@@ -108,6 +108,59 @@ function ReadinessPanel({ discovery }) {
   );
 }
 
+function ProofPage({ discovery }) {
+  const paymentMode = discovery?.x402?.paymentMode ?? "loading";
+  const settlement = discovery?.x402?.settlement ?? "loading";
+  const sellerWallet = discovery?.x402?.sellerWallet;
+
+  const proofCards = [
+    ["What this proves", "An API can publish pricing, reject unpaid access with 402, accept a payment payload on retry, and unlock protected data without a checkout page."],
+    ["How agents discover it", "Buyer agents read /.well-known/x402.json to find the paid endpoint, price, asset, network, schema, and payment header."],
+    ["What is simulated now", "The public demo uses sandbox USDC settlement and message signatures, so no real funds move while the protocol shape stays intact."],
+    ["What becomes real next", "Facilitator mode keeps the same discovery and X-PAYMENT retry contract, but verifies and settles a real x402 payment payload."]
+  ];
+
+  return (
+    <section className="proofPage">
+      <div className="proofIntro">
+        <span className="eyebrow">demo report</span>
+        <h2>Autonomous Monetized API Infrastructure</h2>
+        <p>
+          This is a public proof that software buyers can discover a paid API, satisfy its payment challenge, retry the request, and receive protected data.
+        </p>
+      </div>
+
+      <div className="proofCards">
+        {proofCards.map(([title, body]) => (
+          <article key={title}>
+            <h3>{title}</h3>
+            <p>{body}</p>
+          </article>
+        ))}
+      </div>
+
+      <div className="proofFacts">
+        <div>
+          <span>Live mode</span>
+          <strong>{paymentMode}</strong>
+        </div>
+        <div>
+          <span>Settlement</span>
+          <strong>{settlement}</strong>
+        </div>
+        <div>
+          <span>Seller wallet</span>
+          <strong>{sellerWallet?.isValid ? shortAddress(sellerWallet.address) : "loading"}</strong>
+        </div>
+        <div>
+          <span>Revenue shape</span>
+          <strong>Pay per API call</strong>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function App() {
   const [discovery, setDiscovery] = useState(null);
   const [demoMode, setDemoMode] = useState("agent");
@@ -548,6 +601,8 @@ function App() {
           </div>
         </div>
       </section>
+
+      <ProofPage discovery={discovery} />
     </main>
   );
 }

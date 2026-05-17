@@ -571,6 +571,85 @@ pre {
   padding: 9px 10px;
 }
 
+.proofPage {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid #dce3db;
+  border-radius: 8px;
+  box-shadow: 0 18px 40px rgba(28, 41, 32, 0.08);
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: 24px;
+}
+
+.proofIntro {
+  max-width: 780px;
+}
+
+.proofIntro h2 {
+  font-size: clamp(1.6rem, 4vw, 2.8rem);
+  line-height: 1;
+}
+
+.proofIntro p {
+  color: #52665b;
+  line-height: 1.55;
+  margin-top: 12px;
+}
+
+.proofCards {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 22px;
+}
+
+.proofCards article {
+  background: #f8faf7;
+  border: 1px solid #dde5dc;
+  border-radius: 8px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.proofCards h3 {
+  color: #20372e;
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+.proofCards p {
+  color: #52665b;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.proofFacts {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.proofFacts div {
+  background: #edf3ee;
+  border: 1px solid #dce5dc;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.proofFacts span {
+  color: #68776f;
+  display: block;
+  font-size: 0.78rem;
+  margin-bottom: 4px;
+}
+
+.proofFacts strong {
+  color: #20372e;
+  display: block;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 860px) {
   main {
     padding: 18px;
@@ -586,7 +665,9 @@ pre {
   .flowPanel,
   .walletActions,
   .traceSummary,
-  .proofStrip {
+  .proofStrip,
+  .proofCards,
+  .proofFacts {
     grid-template-columns: 1fr;
   }
 
