@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { encodePaymentRequiredHeader, encodePaymentResponseHeader } from "@x402/core/http";
 import { createFacilitatorProvider, createSandboxProvider } from "./payment-providers.js";
 
 const PORT = Number(process.env.PORT ?? 4021);
@@ -195,6 +196,38 @@ function paymentRequirements() {
   return requirements;
 }
 
+function officialPaymentRequirements(requirements) {
+  return {
+    scheme: requirements.scheme,
+    network: requirements.network,
+    asset: requirements.asset,
+    amount: requirements.amount,
+    payTo: requirements.payTo,
+    maxTimeoutSeconds: requirements.maxTimeoutSeconds,
+    extra: {
+      nonce: requirements.nonce,
+      expiresAt: requirements.expiresAt,
+      resource: requirements.resource
+    }
+  };
+}
+
+function officialPaymentRequired(req, requirements, error = "Payment required") {
+  const origin = publicOrigin(req);
+  return {
+    x402Version: 2,
+    error,
+    resource: {
+      url: `${origin}${requirements.resource}`,
+      description: requirements.description,
+      mimeType: requirements.mimeType,
+      serviceName: API_NAME,
+      tags: ["leads", "agents", "x402", "sandbox"]
+    },
+    accepts: [officialPaymentRequirements(requirements)]
+  };
+}
+
 function parsePaymentHeader(header) {
   if (!header) return null;
   try {
@@ -204,6 +237,25 @@ function parsePaymentHeader(header) {
   }
 }
 
+function normalizeRequirements(requirements, payment = {}) {
+  if (!requirements) return null;
+
+  return {
+    x402Version: String(requirements.x402Version ?? (paymentProvider.mode === "facilitator" ? "1" : "sandbox-1")),
+    scheme: requirements.scheme,
+    network: requirements.network,
+    asset: requirements.asset,
+    amount: requirements.amount,
+    payTo: requirements.payTo,
+    resource: requirements.resource ?? requirements.extra?.resource ?? "/api/premium-leads",
+    description: requirements.description ?? "Premium lead data for autonomous sales agents",
+    mimeType: requirements.mimeType ?? "application/json",
+    maxTimeoutSeconds: requirements.maxTimeoutSeconds ?? Math.floor(PAYMENT_TTL_MS / 1000),
+    expiresAt: requirements.expiresAt ?? requirements.extra?.expiresAt,
+    nonce: requirements.nonce ?? requirements.extra?.nonce
+  };
+}
+
 function requirementsMatchIssued(requirements) {
   const issued = issuedRequirements.get(requirements?.nonce);
   if (!issued) return false;
@@ -211,6 +263,7 @@ function requirementsMatchIssued(requirements) {
 }
 
 function validateRequirements(requirements) {
+  requirements = normalizeRequirements(requirements);
   if (!requirements) return "Payment requirements are missing.";
   if (!["sandbox-1", "1"].includes(requirements.x402Version)) return "Unsupported x402 version.";
   if (paymentProvider.mode === "sandbox" && requirements.x402Version !== "sandbox-1") return "Sandbox mode requires x402Version sandbox-1.";
@@ -228,7 +281,10 @@ function validateRequirements(requirements) {
 }
 
 async function verifyPayment(payment) {
-  if (!payment?.requirements) {
+  const submittedRequirements = payment?.requirements ?? payment?.accepted;
+  const requirements = normalizeRequirements(submittedRequirements, payment);
+
+  if (!requirements) {
     return { ok: false, reason: "Payment payload is missing payment requirements." };
   }
 
@@ -236,7 +292,6 @@ async function verifyPayment(payment) {
     return { ok: false, reason: "Sandbox payment payload is missing payer or signature." };
   }
 
-  const { requirements } = payment;
   const signature = payment.signature ?? JSON.stringify(payment);
   const payer = payment.payer ?? "external-x402-client";
   if (requirements?.nonce && usedNonces.has(requirements.nonce)) {
@@ -246,7 +301,8 @@ async function verifyPayment(payment) {
   const requirementsError = validateRequirements(requirements);
   if (requirementsError) return { ok: false, reason: requirementsError };
 
-  const settlement = await paymentProvider.verifyAndSettle({ payment, requirements, payer });
+  const providerRequirements = paymentProvider.mode === "sandbox" ? requirements : payment.accepted ?? officialPaymentRequirements(requirements);
+  const settlement = await paymentProvider.verifyAndSettle({ payment, requirements: providerRequirements, payer });
   if (!settlement.ok) return { ok: false, statusCode: settlement.statusCode, reason: settlement.reason, data: settlement.data };
 
   const paymentId = crypto
@@ -264,9 +320,9 @@ async function verifyPayment(payment) {
     network: requirements.network,
     resource: requirements.resource,
     mode: settlement.settlement.mode,
-    transaction: settlement.settlement.transaction,
-    provider: paymentProvider.mode,
-    settledAt: new Date().toISOString()
+      transaction: settlement.settlement.transaction,
+      provider: paymentProvider.mode,
+      settledAt: new Date().toISOString()
   });
   usedNonces.add(requirements.nonce);
   issuedRequirements.delete(requirements.nonce);
@@ -461,26 +517,45 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "GET" && url.pathname === "/api/premium-leads") {
-    const payment = parsePaymentHeader(req.headers["x-payment"]);
+    const payment = parsePaymentHeader(req.headers["x-payment"] ?? req.headers["payment-signature"]);
     const verification = await verifyPayment(payment);
 
     if (!verification.ok) {
+      const requirements = paymentRequirements();
+      const paymentRequired = officialPaymentRequired(req, requirements, verification.reason);
+      const paymentRequiredHeader = encodePaymentRequiredHeader(paymentRequired);
+
       return json(
         res,
         verification.statusCode ?? 402,
         {
           error: verification.statusCode === 409 ? "Payment replay rejected" : "Payment required",
           reason: verification.reason,
-          paymentRequirements: paymentRequirements()
+          paymentRequirements: requirements,
+          x402: paymentRequired
         },
-        { "X-PAYMENT-REQUIRED": "true" }
+        {
+          "X-PAYMENT-REQUIRED": "true",
+          "PAYMENT-REQUIRED": paymentRequiredHeader
+        }
       );
     }
+
+    const paymentResponse = {
+      success: true,
+      transaction: verification.receipt.transaction ?? verification.receipt.id,
+      network: verification.receipt.network,
+      amount: verification.receipt.amount,
+      payer: verification.receipt.payer
+    };
 
     return json(res, 200, {
       status: "unlocked",
       receipt: verification.receipt,
       data: premiumLeads
+    }, {
+      "PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse),
+      "X-PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse)
     });
   }
 

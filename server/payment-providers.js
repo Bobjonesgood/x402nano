@@ -112,6 +112,7 @@ export function createFacilitatorProvider({ facilitatorUrl, facilitatorApiKey })
     },
     async verifyAndSettle({ payment, requirements }) {
       const body = {
+        x402Version: payment.x402Version ?? 2,
         paymentPayload: payment,
         paymentRequirements: requirements
       };
@@ -154,4 +155,3 @@ export function createFacilitatorProvider({ facilitatorUrl, facilitatorApiKey })
     }
   };
 }
-

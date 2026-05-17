@@ -42,6 +42,14 @@ Generate a shareable proof report:
 npm.cmd run demo:report
 ```
 
+Run the real x402 buyer path after switching the server to facilitator mode:
+
+```powershell
+$env:BUYER_PRIVATE_KEY="0xYourBaseSepoliaTestPrivateKey"
+$env:BASE_SEPOLIA_RPC_URL="https://your-base-sepolia-rpc"
+npm.cmd run agent:real
+```
+
 ## Public Sandbox Deploy
 
 Use these environment variables first:

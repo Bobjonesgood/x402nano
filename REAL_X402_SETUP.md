@@ -48,6 +48,17 @@ $env:X402_PAYMENT="base64url-real-x402-payment-payload"
 npm.cmd run agent:buyer
 ```
 
+Or use the official x402 EVM client path:
+
+```powershell
+$env:AGENT_API_ORIGIN="https://x402nano.onrender.com"
+$env:BUYER_PRIVATE_KEY="0xYourBaseSepoliaTestPrivateKey"
+$env:BASE_SEPOLIA_RPC_URL="https://your-base-sepolia-rpc"
+npm.cmd run agent:real
+```
+
+Use a dedicated test wallet only. Do not use a mainnet wallet/private key for local experiments.
+
 ## Mainnet Flip
 
 After testnet validation:
