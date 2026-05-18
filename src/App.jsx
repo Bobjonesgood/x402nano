@@ -6,6 +6,13 @@ import "./styles.css";
 const buyerAddress = "0xAutonomousAgentWallet";
 const leadPackEndpoint = "/api/lead-intelligence/premium-pack";
 
+const howItWorksSteps = [
+  ["Discover", "/.well-known/x402.json tells buyers what exists, what it costs, and how to pay."],
+  ["Request", "The lead pack endpoint returns 402 instead of giving away the premium intelligence."],
+  ["Pay", "A sandbox X-PAYMENT payload proves the buyer accepted the quote."],
+  ["Unlock", "LeadNestAI verifies payment, returns a receipt, and releases the lead intelligence pack."]
+];
+
 function Step({ icon: Icon, title, detail, active, done }) {
   return (
     <div className={`step ${active ? "active" : ""} ${done ? "done" : ""}`}>
@@ -133,6 +140,29 @@ function UnlockValuePanel() {
         ))}
       </div>
     </div>
+  );
+}
+
+function HowItWorksPanel() {
+  return (
+    <section className="howPanel">
+      <div className="howIntro">
+        <span className="eyebrow">how LeadNestAI works</span>
+        <h2>Machine-payable lead intelligence infrastructure</h2>
+        <p>
+          The demo shows one focused workflow: discover the paid API, receive a payment quote, retry with payment, and unlock commercially useful lead intelligence.
+        </p>
+      </div>
+      <div className="howSteps">
+        {howItWorksSteps.map(([title, detail], index) => (
+          <div key={title}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <strong>{title}</strong>
+            <p>{detail}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -473,6 +503,8 @@ function App() {
           <strong>Base Sepolia facilitator</strong>
         </div>
       </section>
+
+      <HowItWorksPanel />
 
       <section className="workspace">
         <div className="controlPanel">

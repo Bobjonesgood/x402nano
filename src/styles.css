@@ -106,6 +106,66 @@ h1 {
   background: #2f9f62;
 }
 
+.howPanel {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid #dce3db;
+  border-radius: 8px;
+  box-shadow: 0 18px 40px rgba(28, 41, 32, 0.08);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(360px, 1.35fr);
+  margin: 0 auto 18px;
+  max-width: 1180px;
+  padding: 22px;
+}
+
+.howIntro h2 {
+  color: #20372e;
+  font-size: clamp(1.4rem, 3vw, 2.3rem);
+  line-height: 1.04;
+}
+
+.howIntro p {
+  color: #52665b;
+  line-height: 1.52;
+  margin-top: 12px;
+}
+
+.howSteps {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.howSteps div {
+  background: #f8faf7;
+  border: 1px solid #dde5dc;
+  border-radius: 8px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.howSteps span {
+  color: #176d52;
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.howSteps strong {
+  color: #20372e;
+  display: block;
+  font-size: 0.98rem;
+}
+
+.howSteps p {
+  color: #5f7067;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  margin-top: 8px;
+}
+
 .workspace,
 .dataGrid {
   display: grid;
@@ -740,6 +800,7 @@ pre {
 
   .workspace,
   .dataGrid,
+  .howPanel,
   .flowPanel,
   .walletActions,
   .traceSummary,
@@ -750,6 +811,10 @@ pre {
   }
 
   .modeTabs {
+    grid-template-columns: 1fr;
+  }
+
+  .howSteps {
     grid-template-columns: 1fr;
   }
 

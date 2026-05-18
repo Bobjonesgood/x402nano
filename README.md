@@ -1,6 +1,23 @@
 # LeadNestAI Machine-Payable API Demo
 
-An x402-ready seller API and autonomous buyer proof.
+Machine-payable lead intelligence infrastructure.
+
+LeadNestAI is the commercial story: pay to unlock structured lead intelligence. The x402-style flow is the payment infrastructure underneath it.
+
+Live demo:
+
+```txt
+https://x402nano.onrender.com
+```
+
+Fastest proof:
+
+```powershell
+npm.cmd run settlement:check
+$env:AGENT_API_ORIGIN="https://x402nano.onrender.com"
+npm.cmd run smoke
+npm.cmd run demo:record
+```
 
 The app demonstrates:
 
@@ -10,6 +27,14 @@ The app demonstrates:
 - sandbox settlement today
 - facilitator settlement boundary for real x402 wiring
 - LeadNestAI premium lead intelligence unlocks
+
+Current honest status:
+
+```txt
+sandbox settlement
+no real funds
+real settlement prepared, not enabled
+```
 
 Start with the project map:
 
