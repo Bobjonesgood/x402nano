@@ -59,7 +59,7 @@ async function run() {
   console.log(`settlement: ${manifest.x402?.settlement}`);
   console.log(`resource: ${paidResource}`);
 
-  printStep("2. Requesting protected data", `GET ${paidResource}`);
+  printStep("2. Requesting premium lead intelligence", `GET ${paidResource}`);
   const challenge = await fetchJson(paidResource);
 
   if (challenge.response.status !== 402) {
@@ -89,10 +89,11 @@ async function run() {
   printStep("5. Protected data received");
   console.log(`receipt: ${unlocked.body.receipt.id}`);
   console.log(`settlement: ${unlocked.body.receipt.mode}`);
-  console.log(`leads: ${unlocked.body.data.length}`);
+  console.log(`lead intelligence records: ${unlocked.body.data.length}`);
 
   for (const lead of unlocked.body.data) {
-    console.log(`- ${lead.company} | ${lead.contact} | ${lead.fit}% fit | ${lead.intent}`);
+    console.log(`- ${lead.businessName ?? lead.company} | ${lead.industry ?? "lead intelligence"} | ${lead.confidenceScore ?? lead.fit}% confidence | ${lead.buyingIntent ?? lead.intent}`);
+    if (lead.recommendedOpener) console.log(`  opener: ${lead.recommendedOpener}`);
   }
 }
 

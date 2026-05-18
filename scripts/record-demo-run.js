@@ -62,11 +62,11 @@ function renderTranscript({ generatedAt, manifest, challenge, payment, unlocked 
     {
       step: "Retry with X-PAYMENT",
       status: `${unlocked.response.status}`,
-      proof: `${leads.length} protected records unlocked`
+      proof: `${leads.length} lead intelligence records unlocked`
     }
   ];
 
-  return `# Payment-Aware Sandbox Demo Run
+  return `# LeadNestAI Machine-Payable Demo Run
 
 Generated: ${generatedAt}
 
@@ -74,7 +74,7 @@ Target: ${apiOrigin}
 
 ## Executive Summary
 
-This run proves that a buyer agent can discover a paid API, receive a \`402 Payment Required\` challenge, create a sandbox payment payload, retry with \`X-PAYMENT\`, and receive protected premium lead data plus a receipt.
+This run proves that a buyer agent can discover the LeadNestAI paid API, receive a \`402 Payment Required\` challenge, create a sandbox payment payload, retry with \`X-PAYMENT\`, and receive protected lead intelligence plus a receipt.
 
 ## Live Configuration
 
@@ -102,9 +102,9 @@ ${markdownTable(rows)}
 - Transaction: ${shortValue(receipt.transaction)}
 - Settled at: ${receipt.settledAt}
 
-## Protected Data Received
+## Lead Intelligence Unlocked
 
-${leads.map(lead => `- ${lead.company} | ${lead.contact} | ${lead.fit}% fit | ${lead.intent}`).join("\n")}
+${leads.map(lead => `- ${lead.businessName ?? lead.company} | ${lead.industry ?? "lead intelligence"} | ${lead.location ?? "unknown location"} | ${lead.confidenceScore ?? lead.fit}% confidence | ${lead.buyingIntent ?? lead.intent}\n  Opener: ${lead.recommendedOpener ?? "n/a"}`).join("\n")}
 
 ## Result
 
@@ -164,7 +164,7 @@ async function run() {
   console.log(`latest: ${latestPath}`);
   console.log(`archive: ${archivePath}`);
   console.log(`receipt: ${unlocked.body.receipt.id}`);
-  console.log(`protected records: ${unlocked.body.data.length}`);
+  console.log(`lead intelligence records: ${unlocked.body.data.length}`);
 }
 
 run().catch(error => {

@@ -10,11 +10,11 @@ Prove the same buyer flow with real testnet settlement:
 
 ```txt
 discover API
-request protected data
+request premium lead intelligence
 receive 402 Payment Required
 create real x402 payment payload
 retry with X-PAYMENT
-receive protected data and receipt
+receive protected lead intelligence and receipt
 ```
 
 The discovery manifest, protected endpoint, `402` challenge, `X-PAYMENT` retry, and receipt flow should stay the same. Only the settlement provider changes.
@@ -142,7 +142,7 @@ Expected:
 - receives the `402` challenge
 - creates a real payment through the x402 EVM client path
 - retries with `X-PAYMENT`
-- receives protected data
+- receives protected lead intelligence
 - prints a receipt
 
 If it fails, save the terminal output before changing settings.
@@ -153,8 +153,8 @@ The dry run passes only if all are true:
 
 - `npm.cmd run settlement:check` reports facilitator mode
 - `/api/payments/sign` is disabled
-- `/api/premium-leads` returns `402` before payment
-- `npm.cmd run agent:real` unlocks protected data
+- `/api/lead-intelligence/premium-pack` returns `402` before payment
+- `npm.cmd run agent:real` unlocks protected lead intelligence
 - receipt shows facilitator settlement
 - buyer wallet balance changes only by expected testnet amounts
 - no mainnet wallet or mainnet private key was used
@@ -168,7 +168,7 @@ Stop and roll back if:
 - `sandboxSigner` is still advertised in facilitator mode
 - buyer wallet cannot create a payment payload
 - facilitator rejects verify or settle
-- protected data unlocks without a valid payment
+- lead intelligence unlocks without a valid payment
 - any mainnet wallet/private key was used by mistake
 
 ## Rollback
@@ -217,6 +217,6 @@ After a successful dry run, record:
 - receipt id
 - transaction hash if returned
 - command output from `npm.cmd run agent:real`
-- whether protected data unlocked
+- whether lead intelligence unlocked
 
 Then decide whether to keep the public app in facilitator mode or roll it back to sandbox for demos.

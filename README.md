@@ -1,4 +1,4 @@
-# Payment-Aware Sandbox
+# LeadNestAI Machine-Payable API Demo
 
 An x402-ready seller API and autonomous buyer proof.
 
@@ -9,6 +9,7 @@ The app demonstrates:
 - automatic payment handoff through `X-PAYMENT`
 - sandbox settlement today
 - facilitator settlement boundary for real x402 wiring
+- LeadNestAI premium lead intelligence unlocks
 
 Start with the project map:
 
@@ -28,13 +29,21 @@ Trust statement:
 TRUST.md
 ```
 
+Commercial architecture docs:
+
+```txt
+ARCHITECTURE.md
+PAYMENT_FLOW.md
+API_OVERVIEW.md
+```
+
 ## Demo Brief
 
 This project is a public proof that APIs can become payment-aware resources for agents and wallets.
 
 ### What This Proves
 
-An API can publish its price and payment rules, reject unpaid access with `402 Payment Required`, accept a payment payload on retry, and unlock protected data without a human-operated checkout page.
+An API can publish its price and payment rules, reject unpaid access with `402 Payment Required`, accept a payment payload on retry, and unlock LeadNestAI lead intelligence without a human-operated checkout page.
 
 ### How Agents Discover The API
 
@@ -48,7 +57,7 @@ That manifest exposes the protected endpoint, price, network, asset, payment hea
 
 ### How Payment Unlock Works
 
-The buyer calls `/api/premium-leads` and receives `402`. The buyer then creates a payment payload, retries with `X-PAYMENT`, and receives premium lead data plus a receipt.
+The buyer calls `/api/lead-intelligence/premium-pack` and receives `402`. The buyer then creates a payment payload, retries with `X-PAYMENT`, and receives a premium LeadNestAI lead intelligence pack plus a receipt.
 
 ### What Is Sandbox Now
 

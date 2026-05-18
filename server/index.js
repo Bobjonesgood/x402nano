@@ -15,10 +15,12 @@ const BUYER_ADDRESS = process.env.BUYER_ADDRESS ?? "0xAutonomousAgentWallet";
 const PRICE_USDC = process.env.PRICE_USDC ?? "0.05";
 const NETWORK = process.env.X402_NETWORK ?? "eip155:84532";
 const ASSET = process.env.X402_ASSET ?? "USDC";
-const API_NAME = "Payment-Aware Premium Lead API";
-const RELEASE_VERSION = process.env.RELEASE_VERSION ?? "0.1.0";
-const RELEASE_NAME = process.env.RELEASE_NAME ?? "Payment-Aware Sandbox Proof";
+const API_NAME = "LeadNestAI Lead Intelligence API";
+const RELEASE_VERSION = process.env.RELEASE_VERSION ?? "0.2.0";
+const RELEASE_NAME = process.env.RELEASE_NAME ?? "LeadNestAI Machine-Payable Lead Intelligence Proof";
 const PAYMENT_HEADER = "X-PAYMENT";
+const RESOURCE_PATH = "/api/lead-intelligence/premium-pack";
+const LEGACY_RESOURCE_PATH = "/api/premium-leads";
 const PAYMENT_TTL_MS = 5 * 60 * 1000;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 90;
@@ -26,30 +28,48 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.resolve(__dirname, "../dist");
 const EVM_ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
 
-const premiumLeads = [
+const premiumLeadPack = [
   {
-    id: "lead_7fb2",
-    company: "Northstar Robotics",
-    contact: "Maya Chen",
-    intent: "Evaluating autonomous procurement agents",
-    budget: "$18k pilot",
-    fit: 94
+    id: "lnai_pack_001",
+    businessName: "Riverbend Roofing & Restoration",
+    industry: "Residential roofing",
+    location: "Tulsa, OK",
+    contactPerson: "Operations Manager",
+    estimatedJobValue: "$8,500 - $18,000",
+    buyingIntent: "Recent hail activity; likely quoting roof inspections and insurance-related repairs.",
+    painPoints: ["storm-response lead volume", "missed inspection follow-up", "slow quote turnaround"],
+    recommendedOpener: "Saw the recent storm activity around Tulsa. Are you taking on extra roof inspection requests this week, or are you already booked out?",
+    confidenceScore: 94,
+    sourceType: "local market signal",
+    lastUpdated: "2026-05-17"
   },
   {
-    id: "lead_31ac",
-    company: "LedgerFlow Ops",
-    contact: "Darius Cole",
-    intent: "Needs pay-per-call API monetization",
-    budget: "$42k platform upgrade",
-    fit: 89
+    id: "lnai_pack_002",
+    businessName: "Blue Ridge Custom Painting",
+    industry: "Residential painting",
+    location: "Knoxville, TN",
+    contactPerson: "Owner",
+    estimatedJobValue: "$3,200 - $9,500",
+    buyingIntent: "Seasonal exterior painting demand; likely wants booked estimates before peak summer heat.",
+    painPoints: ["inconsistent estimate pipeline", "low-quality form leads", "needs higher-ticket exterior jobs"],
+    recommendedOpener: "Are you still booking exterior paint estimates for the next few weeks? I found a few neighborhoods showing strong repaint demand.",
+    confidenceScore: 91,
+    sourceType: "home-service demand pattern",
+    lastUpdated: "2026-05-17"
   },
   {
-    id: "lead_a902",
-    company: "SignalFoundry AI",
-    contact: "Elena Price",
-    intent: "Building agent-discoverable data feeds",
-    budget: "$27k sandbox rollout",
-    fit: 91
+    id: "lnai_pack_003",
+    businessName: "ClearPath Pressure Washing",
+    industry: "Exterior cleaning",
+    location: "Savannah, GA",
+    contactPerson: "Service Coordinator",
+    estimatedJobValue: "$650 - $2,400",
+    buyingIntent: "Warm-weather driveway, siding, and patio cleaning demand; good fit for fast quote campaigns.",
+    painPoints: ["small jobs scattered across channels", "needs bundled route density", "slow repeat-customer reactivation"],
+    recommendedOpener: "Are you trying to fill pressure washing routes this month? I can point you toward homeowners likely to need driveway or siding cleaning.",
+    confidenceScore: 88,
+    sourceType: "seasonal service trigger",
+    lastUpdated: "2026-05-17"
   }
 ];
 
@@ -57,6 +77,23 @@ const payments = new Map();
 const issuedRequirements = new Map();
 const usedNonces = new Set();
 const rateLimits = new Map();
+const eventLog = [];
+
+function isProtectedResource(pathname) {
+  return pathname === RESOURCE_PATH || pathname === LEGACY_RESOURCE_PATH;
+}
+
+function logEvent(type, details = {}) {
+  const event = {
+    id: crypto.randomUUID(),
+    type,
+    timestamp: new Date().toISOString(),
+    details
+  };
+  eventLog.unshift(event);
+  eventLog.splice(100);
+  return event;
+}
 
 function canonicalPayment(requirements, payer = BUYER_ADDRESS) {
   return [
@@ -75,8 +112,8 @@ function canonicalPayment(requirements, payer = BUYER_ADDRESS) {
 
 function walletPaymentMessage(requirements, payer = BUYER_ADDRESS) {
   return [
-    "Payment-Aware Sandbox",
-    "Sign this message to authorize sandbox access.",
+    "LeadNestAI Payment-Aware Sandbox",
+    "Sign this message to authorize sandbox access to the premium lead intelligence pack.",
     "",
     `Payer: ${payer}`,
     `Seller: ${requirements.payTo}`,
@@ -122,14 +159,23 @@ const leadSchema = {
       type: "array",
       items: {
         type: "object",
-        required: ["id", "company", "contact", "intent", "budget", "fit"],
+        required: ["id", "businessName", "industry", "location", "estimatedJobValue", "buyingIntent", "painPoints", "recommendedOpener", "confidenceScore"],
         properties: {
           id: { type: "string" },
-          company: { type: "string" },
-          contact: { type: "string" },
-          intent: { type: "string" },
-          budget: { type: "string" },
-          fit: { type: "number", minimum: 0, maximum: 100 }
+          businessName: { type: "string" },
+          industry: { type: "string" },
+          location: { type: "string" },
+          contactPerson: { type: "string" },
+          estimatedJobValue: { type: "string" },
+          buyingIntent: { type: "string" },
+          painPoints: {
+            type: "array",
+            items: { type: "string" }
+          },
+          recommendedOpener: { type: "string" },
+          confidenceScore: { type: "number", minimum: 0, maximum: 100 },
+          sourceType: { type: "string" },
+          lastUpdated: { type: "string" }
         }
       }
     }
@@ -255,8 +301,8 @@ function paymentRequirements() {
     asset: ASSET,
     amount: PRICE_USDC,
     payTo: SELLER_ADDRESS,
-    resource: "/api/premium-leads",
-    description: "Premium lead data for autonomous sales agents",
+    resource: RESOURCE_PATH,
+    description: "LeadNestAI premium lead intelligence pack for sales agents and service businesses",
     mimeType: "application/json",
     maxTimeoutSeconds: Math.floor(PAYMENT_TTL_MS / 1000),
     expiresAt: new Date(Date.now() + PAYMENT_TTL_MS).toISOString(),
@@ -265,6 +311,14 @@ function paymentRequirements() {
   };
 
   issuedRequirements.set(requirements.nonce, requirements);
+  logEvent("quote_issued", {
+    nonce: requirements.nonce,
+    resource: requirements.resource,
+    amount: requirements.amount,
+    asset: requirements.asset,
+    network: requirements.network,
+    paymentMode: paymentProvider.mode
+  });
   return requirements;
 }
 
@@ -319,8 +373,8 @@ function normalizeRequirements(requirements, payment = {}) {
     asset: requirements.asset,
     amount: requirements.amount,
     payTo: requirements.payTo,
-    resource: requirements.resource ?? requirements.extra?.resource ?? "/api/premium-leads",
-    description: requirements.description ?? "Premium lead data for autonomous sales agents",
+    resource: requirements.resource ?? requirements.extra?.resource ?? RESOURCE_PATH,
+    description: requirements.description ?? "LeadNestAI premium lead intelligence pack for sales agents and service businesses",
     mimeType: requirements.mimeType ?? "application/json",
     maxTimeoutSeconds: requirements.maxTimeoutSeconds ?? Math.floor(PAYMENT_TTL_MS / 1000),
     expiresAt: requirements.expiresAt ?? requirements.extra?.expiresAt,
@@ -345,7 +399,7 @@ function validateRequirements(requirements) {
   if (requirements.asset !== ASSET) return "Unsupported payment asset.";
   if (requirements.amount !== PRICE_USDC) return "Incorrect payment amount.";
   if (requirements.payTo !== SELLER_ADDRESS) return "Incorrect seller address.";
-  if (requirements.resource !== "/api/premium-leads") return "Payment was signed for a different resource.";
+  if (requirements.resource !== RESOURCE_PATH) return "Payment was signed for a different resource.";
   if (!requirements.nonce) return "Payment nonce is missing.";
   if (!requirementsMatchIssued(requirements)) return "Payment quote was not issued by this seller server.";
   if (new Date(requirements.expiresAt).getTime() < Date.now()) return "Payment quote expired.";
@@ -355,6 +409,11 @@ function validateRequirements(requirements) {
 async function verifyPayment(payment) {
   const submittedRequirements = payment?.requirements ?? payment?.accepted;
   const requirements = normalizeRequirements(submittedRequirements, payment);
+  logEvent("payment_attempted", {
+    resource: requirements?.resource,
+    payer: payment?.payer ?? "external-x402-client",
+    paymentMode: paymentProvider.mode
+  });
 
   if (!requirements) {
     return { ok: false, reason: "Payment payload is missing payment requirements." };
@@ -398,6 +457,18 @@ async function verifyPayment(payment) {
   });
   usedNonces.add(requirements.nonce);
   issuedRequirements.delete(requirements.nonce);
+  logEvent("payment_verified", {
+    receiptId: paymentId,
+    payer,
+    resource: requirements.resource,
+    settlement: settlement.settlement.mode
+  });
+  logEvent("receipt_generated", {
+    receiptId: paymentId,
+    resource: requirements.resource,
+    amount: requirements.amount,
+    asset: requirements.asset
+  });
 
   return { ok: true, receipt: payments.get(paymentId) };
 }
@@ -422,7 +493,7 @@ function apiDiscovery(req) {
   const origin = publicOrigin(req);
   return {
     name: API_NAME,
-    description: "An x402-ready seller endpoint that autonomous agents can discover, price, pay, retry, and unlock.",
+    description: "A machine-payable LeadNestAI endpoint that buyers and autonomous agents can discover, price, pay, retry, and unlock.",
     version: "1.0.0",
     x402: {
       version: PAYMENT_MODE === "facilitator" ? "1" : "sandbox-1",
@@ -442,15 +513,15 @@ function apiDiscovery(req) {
       version: `${origin}/api/version`,
       pricing: `${origin}/api/pricing`,
       schema: `${origin}/api/schema`,
-      paidResource: `${origin}/api/premium-leads`,
+      paidResource: `${origin}${RESOURCE_PATH}`,
       sandboxSigner: paymentProvider.isClientSigningAvailable ? `${origin}/api/payments/sign` : null,
       receiptTemplate: `${origin}/api/receipts/{receiptId}`
     },
     endpoints: [
       {
         method: "GET",
-        path: "/api/premium-leads",
-        description: "Returns premium lead data after a valid x402-style payment header is verified.",
+        path: RESOURCE_PATH,
+        description: "Returns a premium LeadNestAI lead intelligence pack after a valid x402-style payment header is verified.",
         price: `${PRICE_USDC} ${ASSET}`,
         payment: {
           header: PAYMENT_HEADER,
@@ -459,7 +530,7 @@ function apiDiscovery(req) {
           retryBehavior: "Repeat the same request with X-PAYMENT set to the encoded payment payload."
         },
         responseSchema: "/api/schema",
-        flow: ["discover", "request", "receive 402 requirements", "sign payment", "retry with X-PAYMENT", "receive protected data"]
+        flow: ["discover", "request", "receive 402 requirements", "sign payment", "retry with X-PAYMENT", "receive premium lead intelligence"]
       }
     ]
   };
@@ -534,7 +605,8 @@ const server = http.createServer(async (req, res) => {
       sellerWallet: sellerWalletStatus(),
       uptimeSeconds: Math.floor(process.uptime()),
       issuedQuotes: issuedRequirements.size,
-      settledPayments: payments.size
+      settledPayments: payments.size,
+      eventsLogged: eventLog.length
     });
   }
 
@@ -544,7 +616,9 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && url.pathname === "/api/pricing") {
     return json(res, 200, {
-      resource: "/api/premium-leads",
+      resource: RESOURCE_PATH,
+      legacyResource: LEGACY_RESOURCE_PATH,
+      currentResource: RESOURCE_PATH,
       amount: PRICE_USDC,
       asset: ASSET,
       network: NETWORK,
@@ -560,9 +634,17 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && url.pathname === "/api/schema") {
     return json(res, 200, {
-      resource: "/api/premium-leads",
+      resource: RESOURCE_PATH,
+      legacyResource: LEGACY_RESOURCE_PATH,
       contentType: "application/json",
       schema: leadSchema
+    });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/events") {
+    return json(res, 200, {
+      events: eventLog.slice(0, 25),
+      totalRetained: eventLog.length
     });
   }
 
@@ -620,7 +702,7 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (req.method === "GET" && url.pathname === "/api/premium-leads") {
+  if (req.method === "GET" && isProtectedResource(url.pathname)) {
     const payment = parsePaymentHeader(req.headers["x-payment"] ?? req.headers["payment-signature"]);
     const verification = await verifyPayment(payment);
 
@@ -645,6 +727,12 @@ const server = http.createServer(async (req, res) => {
       );
     }
 
+    logEvent("lead_pack_unlocked", {
+      receiptId: verification.receipt.id,
+      resource: RESOURCE_PATH,
+      records: premiumLeadPack.length
+    });
+
     const paymentResponse = {
       success: true,
       transaction: verification.receipt.transaction ?? verification.receipt.id,
@@ -656,7 +744,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, {
       status: "unlocked",
       receipt: verification.receipt,
-      data: premiumLeads
+      data: premiumLeadPack
     }, {
       "PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse),
       "X-PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse)

@@ -1,4 +1,4 @@
-# Payment-Aware Sandbox Runbook
+# LeadNestAI Demo Runbook
 
 Live demo: https://x402nano.onrender.com
 
@@ -55,9 +55,9 @@ This proves:
 - `/.well-known/x402.json` works
 - `/api/pricing` works
 - `/api/schema` works
-- `/api/premium-leads` returns `402` before payment
+- `/api/lead-intelligence/premium-pack` returns `402` before payment
 - sandbox signing works
-- retry with `X-PAYMENT` unlocks protected data
+- retry with `X-PAYMENT` unlocks lead intelligence
 
 ## 4. Run The Buyer Agent
 
@@ -70,7 +70,7 @@ Expected flow:
 
 ```txt
 1. Discovering seller API
-2. Requesting protected data
+2. Requesting premium lead intelligence
 3. Paying automatically
 4. Retrying with X-PAYMENT
 5. Protected data received

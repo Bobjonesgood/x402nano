@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 
 const buyerAddress = "0xAutonomousAgentWallet";
+const leadPackEndpoint = "/api/lead-intelligence/premium-pack";
 
 function Step({ icon: Icon, title, detail, active, done }) {
   return (
@@ -114,8 +115,8 @@ function ProofPage({ discovery }) {
   const sellerWallet = discovery?.x402?.sellerWallet;
 
   const proofCards = [
-    ["What this proves", "An API can publish pricing, reject unpaid access with 402, accept a payment payload on retry, and unlock protected data without a checkout page."],
-    ["How agents discover it", "Buyer agents read /.well-known/x402.json to find the paid endpoint, price, asset, network, schema, and payment header."],
+    ["What this proves", "LeadNestAI can publish pricing, reject unpaid access with 402, accept a payment payload on retry, and unlock a structured lead intelligence pack."],
+    ["How agents discover it", "Buyer agents read /.well-known/x402.json to find the LeadNestAI paid endpoint, price, asset, network, schema, and payment header."],
     ["What is simulated now", "The public demo uses sandbox USDC settlement and message signatures, so no real funds move while the protocol shape stays intact."],
     ["What becomes real next", "Facilitator mode keeps the same discovery and X-PAYMENT retry contract, but verifies and settles a real x402 payment payload."]
   ];
@@ -124,9 +125,9 @@ function ProofPage({ discovery }) {
     <section className="proofPage">
       <div className="proofIntro">
         <span className="eyebrow">demo report</span>
-        <h2>Autonomous Monetized API Infrastructure</h2>
+        <h2>Machine-Payable Lead Intelligence</h2>
         <p>
-          This is a public proof that software buyers can discover a paid API, satisfy its payment challenge, retry the request, and receive protected data.
+          This is a public proof that buyers and software agents can discover LeadNestAI, pay for a premium lead pack, retry the request, and receive structured lead intelligence.
         </p>
       </div>
 
@@ -154,7 +155,7 @@ function ProofPage({ discovery }) {
         </div>
         <div>
           <span>Revenue shape</span>
-          <strong>Pay per API call</strong>
+          <strong>Pay per lead pack</strong>
         </div>
       </div>
     </section>
@@ -181,23 +182,23 @@ function App() {
     agent: {
       title: "Auto Agent",
       heading: "Autonomous API Buyer",
-      body: "Discover, price, pay, retry, and receive protected data without a wallet popup."
+      body: "Discover, price, pay, retry, and receive a LeadNestAI premium lead pack without a wallet popup."
     },
     wallet: {
       title: "Browser Wallet",
       heading: "Browser Wallet Buyer",
-      body: "Connect a wallet, sign the payment authorization, and unlock the protected endpoint."
+      body: "Connect a wallet, sign the payment authorization, and unlock the premium lead intelligence pack."
     },
     trace: {
       title: "Protocol Trace",
       heading: "Protocol Trace",
-      body: "Inspect the discovery links, payment requirements, receipt, signature, and event log."
+      body: "Inspect the discovery links, payment requirements, receipt, signature, and unlock log."
     }
   };
 
   const totalFit = useMemo(() => {
     if (!leads.length) return 0;
-    return Math.round(leads.reduce((sum, lead) => sum + lead.fit, 0) / leads.length);
+    return Math.round(leads.reduce((sum, lead) => sum + (lead.confidenceScore ?? lead.fit ?? 0), 0) / leads.length);
   }, [leads]);
 
   useEffect(() => {
@@ -271,8 +272,8 @@ function App() {
 
     try {
       setPhase("requesting");
-      appendLog("Agent requested /api/premium-leads without payment.");
-      const firstResponse = await fetch("/api/premium-leads");
+      appendLog(`Agent requested ${leadPackEndpoint} without payment.`);
+      const firstResponse = await fetch(leadPackEndpoint);
       const paymentChallenge = await firstResponse.json();
 
       if (firstResponse.status !== 402) {
@@ -311,7 +312,7 @@ function App() {
       setPhase("unlocking");
       appendLog("Agent retried the API call with X-PAYMENT.");
 
-      const unlockedResponse = await fetch("/api/premium-leads", {
+      const unlockedResponse = await fetch(leadPackEndpoint, {
         headers: {
           "X-PAYMENT": signed.encodedPayment ?? encodePayment({
             payer: buyerAddress,
@@ -329,7 +330,7 @@ function App() {
       setReceipt(unlocked.receipt);
       setLeads(unlocked.data);
       setPhase("complete");
-      appendLog("Payment verified. Premium lead data unlocked.");
+      appendLog("Payment verified. LeadNestAI premium pack unlocked.");
     } catch (paymentError) {
       setPhase("challenged");
       setError(paymentError.message);
@@ -349,8 +350,8 @@ function App() {
       if (!payer) return;
 
       setPhase("requesting");
-      appendLog("Browser wallet buyer requested /api/premium-leads without payment.");
-      const firstResponse = await fetch("/api/premium-leads");
+      appendLog(`Browser wallet buyer requested ${leadPackEndpoint} without payment.`);
+      const firstResponse = await fetch(leadPackEndpoint);
       const paymentChallenge = await firstResponse.json();
 
       if (firstResponse.status !== 402) {
@@ -382,7 +383,7 @@ function App() {
 
       setPhase("unlocking");
       appendLog("Browser wallet signature captured. Retrying with X-PAYMENT.");
-      const unlockedResponse = await fetch("/api/premium-leads", {
+      const unlockedResponse = await fetch(leadPackEndpoint, {
         headers: {
           "X-PAYMENT": encodePayment({
             payer,
@@ -402,7 +403,7 @@ function App() {
       setReceipt(unlocked.receipt);
       setLeads(unlocked.data);
       setPhase("complete");
-      appendLog("Browser wallet payment verified. Premium lead data unlocked.");
+      appendLog("Browser wallet payment verified. LeadNestAI premium pack unlocked.");
     } catch (walletError) {
       setPhase("idle");
       setError(walletError.message);
@@ -414,19 +415,19 @@ function App() {
     <main>
       <section className="topbar">
         <div>
-          <span className="eyebrow">x402 seller sandbox</span>
-          <h1>Payment-Aware Sandbox</h1>
+          <span className="eyebrow">LeadNestAI x402 sandbox</span>
+          <h1>LeadNestAI</h1>
         </div>
         <div className="statusPill">
           <span className={paid ? "dot paid" : "dot"} />
-          {paid ? "Data unlocked" : "Payment required"}
+          {paid ? "Lead pack unlocked" : "Payment required"}
         </div>
       </section>
 
       <section className="proofStrip">
         <div>
           <span>Proves</span>
-          <strong>Machine-payable API access</strong>
+          <strong>Machine-payable lead intelligence</strong>
         </div>
         <div>
           <span>Discovery</span>
@@ -438,7 +439,7 @@ function App() {
         </div>
         <div>
           <span>Now</span>
-          <strong>Sandbox USDC settlement</strong>
+          <strong>Sandbox USDC unlock</strong>
         </div>
         <div>
           <span>Next</span>
@@ -475,12 +476,12 @@ function App() {
             <>
               <button className="primaryButton" onClick={requestPremiumLeadData} disabled={busy}>
                 {busy && phase !== "wallet" ? <Loader2 className="spin" size={19} /> : <Play size={19} />}
-                Request Premium Lead Data
+                Unlock Premium Lead Pack
               </button>
 
               <label className="toggleRow">
                 <input type="checkbox" checked={autonomous} onChange={event => setAutonomous(event.target.checked)} />
-                <span>Auto-sign sandbox USDC payment and retry</span>
+                <span>Auto-sign sandbox USDC payment and unlock lead intelligence</span>
               </label>
 
               {phase === "challenged" && (
@@ -500,7 +501,7 @@ function App() {
               </button>
               <button className="primaryButton" onClick={requestWithBrowserWallet} disabled={busy}>
                 {phase === "wallet" ? <Loader2 className="spin" size={18} /> : <KeyRound size={18} />}
-                Pay With Browser Wallet
+                Pay To Unlock Lead Pack
               </button>
             </div>
           )}
@@ -542,7 +543,7 @@ function App() {
               <strong>{requirements?.network ?? "base-sepolia"}</strong>
             </div>
             <div>
-              <span>Avg fit</span>
+              <span>Avg confidence</span>
               <strong>{totalFit || "--"}%</strong>
             </div>
             <div>
@@ -553,17 +554,17 @@ function App() {
         </div>
 
         <div className="flowPanel">
-          <Step icon={Radar} title="Discover API" detail="/.well-known/x402.json publishes the paid endpoint" active={phase === "idle"} done={Boolean(discovery)} />
-          <Step icon={DatabaseZap} title="Request Protected Data" detail="Seller returns 402 instead of leads" active={phase === "requesting"} done={Boolean(requirements)} />
+          <Step icon={Radar} title="Discover LeadNestAI" detail="/.well-known/x402.json publishes the paid lead pack endpoint" active={phase === "idle"} done={Boolean(discovery)} />
+          <Step icon={DatabaseZap} title="Request Lead Pack" detail="Seller returns 402 instead of lead intelligence" active={phase === "requesting"} done={Boolean(requirements)} />
           <Step icon={CircleDollarSign} title="Pay Automatically" detail="Agent signs the x402 payment payload" active={phase === "signing"} done={Boolean(signature)} />
-          <Step icon={ShieldCheck} title="Receive Protected Data" detail="Retry includes X-PAYMENT and unlocks leads" active={phase === "unlocking"} done={paid} />
+          <Step icon={ShieldCheck} title="Receive Intelligence" detail="Retry includes X-PAYMENT and unlocks the lead pack" active={phase === "unlocking"} done={paid} />
         </div>
       </section>
 
       <section className="dataGrid">
         <div className="dataPanel">
           <div className="sectionHead">
-            <h2>Premium Lead Data</h2>
+            <h2>LeadNestAI Premium Pack</h2>
             {paid && <CheckCircle2 size={20} />}
           </div>
           <div className="leadList">
@@ -572,18 +573,27 @@ function App() {
                 <article className="lead" key={lead.id}>
                   <div>
                     <span>{lead.id}</span>
-                    <h3>{lead.company}</h3>
+                    <h3>{lead.businessName ?? lead.company}</h3>
                   </div>
-                  <p>{lead.intent}</p>
+                  <p>{lead.buyingIntent ?? lead.intent}</p>
+                  {lead.painPoints?.length > 0 && (
+                    <ul className="painList">
+                      {lead.painPoints.map(point => (
+                        <li key={point}>{point}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {lead.recommendedOpener && <p className="opener">"{lead.recommendedOpener}"</p>}
                   <div className="leadMeta">
-                    <strong>{lead.contact}</strong>
-                    <span>{lead.budget}</span>
-                    <b>{lead.fit}% fit</b>
+                    <strong>{lead.industry ?? lead.contact}</strong>
+                    <span>{lead.location ?? lead.estimatedJobValue}</span>
+                    <span>{lead.estimatedJobValue ?? lead.budget}</span>
+                    <b>{lead.confidenceScore ?? lead.fit}% confidence</b>
                   </div>
                 </article>
               ))
             ) : (
-              <div className="emptyState">Protected data is waiting behind the payment challenge.</div>
+              <div className="emptyState">A premium LeadNestAI lead pack is locked behind the payment challenge.</div>
             )}
           </div>
         </div>

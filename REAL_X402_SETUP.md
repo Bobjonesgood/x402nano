@@ -20,7 +20,7 @@ Run the autonomous buyer proof:
 npm.cmd run agent:buyer
 ```
 
-The buyer will discover `/.well-known/x402.json`, request `/api/premium-leads`, receive `402`, create a sandbox payment, retry with `X-PAYMENT`, and print the protected leads.
+The buyer will discover `/.well-known/x402.json`, request `/api/lead-intelligence/premium-pack`, receive `402`, create a sandbox payment, retry with `X-PAYMENT`, and print the protected LeadNestAI lead intelligence pack.
 
 ## Facilitator Mode
 
@@ -37,7 +37,7 @@ In this mode:
 
 - `/.well-known/x402.json` advertises facilitator settlement.
 - `/api/payments/sign` returns `501` because signing belongs to the buyer wallet or x402 client.
-- `/api/premium-leads` still returns `402` with payment requirements.
+- `/api/lead-intelligence/premium-pack` still returns `402` with payment requirements.
 - The retry still uses `X-PAYMENT`.
 - The server posts the payment payload and requirements to the facilitator `/verify` and `/settle` endpoints.
 

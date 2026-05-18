@@ -27,6 +27,36 @@ https://x402nano.onrender.com
 - Demo report, project index, runbook, and real settlement dry-run checklist
 - `/api/version` endpoint for release, build, payment mode, and live status metadata
 
+## v0.2.0 - LeadNestAI Commercial Proof
+
+Date: 2026-05-18
+
+### What Changed
+
+- Rebranded the demo around LeadNestAI
+- Promoted the protected commercial endpoint to `/api/lead-intelligence/premium-pack`
+- Replaced generic premium leads with structured lead intelligence records
+- Added realistic business fields: industry, location, estimated job value, buying intent, pain points, recommended opener, and confidence score
+- Added event logging structure for quote, payment, unlock, and receipt events
+- Added `/api/events` for retained demo events
+- Added `ARCHITECTURE.md`, `PAYMENT_FLOW.md`, and `API_OVERVIEW.md`
+- Kept sandbox settlement in place
+
+### Commercial Direction
+
+LeadNestAI is the commercial front. x402-style payment flow is the infrastructure layer underneath it.
+
+The goal is one polished workflow:
+
+```txt
+discover LeadNestAI
+request premium lead intelligence
+receive 402 quote
+pay with X-PAYMENT
+unlock lead pack
+receive receipt
+```
+
 ### Intentionally Sandboxed
 
 The public deployment is intentionally running:

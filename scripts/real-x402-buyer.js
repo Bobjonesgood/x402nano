@@ -62,10 +62,11 @@ async function run() {
 
   console.log(`receipt: ${body.receipt?.id}`);
   console.log(`settlement: ${body.receipt?.mode}`);
-  console.log(`leads: ${body.data?.length ?? 0}`);
+  console.log(`lead intelligence records: ${body.data?.length ?? 0}`);
 
   for (const lead of body.data ?? []) {
-    console.log(`- ${lead.company} | ${lead.contact} | ${lead.fit}% fit | ${lead.intent}`);
+    console.log(`- ${lead.businessName ?? lead.company} | ${lead.industry ?? "lead intelligence"} | ${lead.confidenceScore ?? lead.fit}% confidence | ${lead.buyingIntent ?? lead.intent}`);
+    if (lead.recommendedOpener) console.log(`  opener: ${lead.recommendedOpener}`);
   }
 }
 
@@ -73,4 +74,3 @@ run().catch(error => {
   console.error(`\nReal x402 buyer failed: ${error.message}`);
   process.exitCode = 1;
 });
-

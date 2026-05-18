@@ -45,7 +45,7 @@ async function run() {
 
   const schema = await fetchJson("/api/schema");
   assert(schema.response.status === 200, `schema returned ${schema.response.status}`);
-  assert(schema.body.resource === "/api/premium-leads", "schema resource mismatch");
+  assert(schema.body.resource === "/api/lead-intelligence/premium-pack", "schema resource mismatch");
   ok("schema", schema.body.resource);
 
   const challenge = await fetchJson(manifest.body.links.paidResource);
@@ -72,7 +72,9 @@ async function run() {
       }
     });
     assert(unlocked.response.status === 200, `paid retry returned ${unlocked.response.status}`);
-    assert(Array.isArray(unlocked.body.data) && unlocked.body.data.length > 0, "paid retry did not return protected data");
+    assert(Array.isArray(unlocked.body.data) && unlocked.body.data.length > 0, "paid retry did not return lead intelligence");
+    assert(unlocked.body.data[0].businessName, "paid retry missing lead intelligence businessName");
+    assert(unlocked.body.data[0].recommendedOpener, "paid retry missing recommended opener");
     ok("paid retry", `${unlocked.body.data.length} protected records`);
   } else {
     ok("paid retry skipped", "facilitator mode requires external X-PAYMENT");

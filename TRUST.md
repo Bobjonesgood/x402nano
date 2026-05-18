@@ -8,13 +8,13 @@ Real proof. Clear boundaries. No fake claims.
 
 ## What This Demo Proves
 
-The Payment-Aware Sandbox proves that an API can expose a machine-payable access pattern:
+The LeadNestAI sandbox proves that a lead intelligence API can expose a machine-payable access pattern:
 
 - publish a discovery manifest at `/.well-known/x402.json`
 - reject unpaid access with `402 Payment Required`
 - return payment requirements to the buyer
 - accept a payment payload through `X-PAYMENT`
-- unlock protected data after verification
+- unlock protected lead intelligence after verification
 - return a receipt
 - provide scripts that reproduce the flow from the command line
 
@@ -107,7 +107,7 @@ Before real settlement is enabled, the project requires a controlled Base Sepoli
 - seller wallet confirmed
 - buyer private key kept local only
 - `npm.cmd run settlement:check` passes in facilitator mode
-- `npm.cmd run agent:real` unlocks protected data with testnet funds
+- `npm.cmd run agent:real` unlocks protected lead intelligence with testnet funds
 
 The checklist lives in:
 

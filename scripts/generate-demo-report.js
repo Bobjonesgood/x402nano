@@ -19,10 +19,13 @@ async function fetchJson(pathOrUrl, options = {}) {
 function summarizeLeads(leads) {
   return leads.map(lead => ({
     id: lead.id,
-    company: lead.company,
-    contact: lead.contact,
-    fit: lead.fit,
-    intent: lead.intent
+    businessName: lead.businessName ?? lead.company,
+    industry: lead.industry,
+    location: lead.location,
+    estimatedJobValue: lead.estimatedJobValue,
+    buyingIntent: lead.buyingIntent ?? lead.intent,
+    recommendedOpener: lead.recommendedOpener,
+    confidenceScore: lead.confidenceScore ?? lead.fit
   }));
 }
 
@@ -30,7 +33,7 @@ async function run() {
   const report = {
     generatedAt: new Date().toISOString(),
     apiOrigin,
-    proof: "Autonomous buyer discovers a paid API, receives 402, pays, retries with X-PAYMENT, and receives protected data.",
+    proof: "Autonomous buyer discovers the LeadNestAI paid API, receives 402, pays, retries with X-PAYMENT, and receives protected lead intelligence.",
     steps: []
   };
 
@@ -117,4 +120,3 @@ run().catch(error => {
   console.error(`Demo report failed: ${error.message}`);
   process.exitCode = 1;
 });
-

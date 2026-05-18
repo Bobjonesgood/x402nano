@@ -1,10 +1,10 @@
-# Payment-Aware Sandbox Demo Report
+# LeadNestAI Machine-Payable Demo Report
 
 Live demo: https://x402nano.onrender.com
 
 ## One-Line Thesis
 
-This project proves that an API can become a machine-payable resource: an autonomous buyer can discover the endpoint, receive a `402 Payment Required` challenge, submit a payment payload, retry the request, and receive protected data.
+This project proves that LeadNestAI can become a machine-payable lead intelligence resource: an autonomous buyer can discover the endpoint, receive a `402 Payment Required` challenge, submit a payment payload, retry the request, and receive protected lead intelligence.
 
 ## What This Proves
 
@@ -18,7 +18,7 @@ The build demonstrates the core shape of autonomous monetized APIs:
 - Autonomous buyer scripting for machine-to-machine access
 - A clean boundary between sandbox settlement and future facilitator settlement
 
-The important proof is not the lead data itself. The proof is that paid API access can happen at the protocol layer, without a checkout page, invoice flow, sales call, or human approval loop.
+The important proof is the commercial workflow: LeadNestAI can sell structured lead intelligence at the API layer, without a checkout page, invoice flow, sales call, or human approval loop.
 
 ## How Agents Discover The API
 
@@ -44,7 +44,7 @@ This is the discovery step that lets a buyer agent understand the API before att
 
 The buyer flow is:
 
-1. Request `/api/premium-leads` without payment.
+1. Request `/api/lead-intelligence/premium-pack` without payment.
 2. Receive `402 Payment Required`.
 3. Read the payment requirements returned by the seller.
 4. Create a payment payload.
@@ -104,7 +104,7 @@ That is the infrastructure pattern behind autonomous monetized APIs.
 - Base Sepolia and USDC advertised in discovery
 - Real settlement intentionally disabled
 - Readiness checker available through `npm.cmd run settlement:check`
-- Live smoke test validates discovery, challenge, payment retry, and protected data unlock
+- Live smoke test validates discovery, challenge, payment retry, and lead intelligence unlock
 
 ## Revenue Model Ideas
 

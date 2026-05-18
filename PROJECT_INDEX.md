@@ -1,6 +1,6 @@
 # Project Index
 
-This is the map for the Payment-Aware Sandbox project.
+This is the map for the LeadNestAI machine-payable API demo.
 
 ## 1. Live Demo
 
@@ -16,6 +16,7 @@ What it shows:
 - `402 Payment Required` challenge
 - `X-PAYMENT` retry flow
 - sandbox USDC settlement
+- LeadNestAI premium lead intelligence unlock
 - browser wallet signing mode
 - receipt panel
 - settlement readiness panel
@@ -82,6 +83,14 @@ Trust statement:
 
 ```txt
 TRUST.md
+```
+
+Commercial architecture:
+
+```txt
+ARCHITECTURE.md
+PAYMENT_FLOW.md
+API_OVERVIEW.md
 ```
 
 ## 4. Operating Commands
@@ -170,6 +179,9 @@ REAL_X402_SETUP.md                  settlement setup notes
 REAL_SETTLEMENT_DRY_RUN.md          preflight before real settlement
 RELEASE_NOTES.md                    v0.1.0 release snapshot
 TRUST.md                            proof boundaries and verification statement
+ARCHITECTURE.md                     buyer, seller, receipt, and event architecture
+PAYMENT_FLOW.md                     discover, quote, pay, retry, unlock workflow
+API_OVERVIEW.md                     LeadNestAI API endpoint reference
 ```
 
 ## 8. What To Do Next
