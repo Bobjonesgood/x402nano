@@ -15,7 +15,7 @@ https://x402nano.onrender.com
 Keep the explanation short:
 
 ```txt
-This is LeadNestAI. It is a machine-payable lead intelligence demo. The API can challenge unpaid access, accept a payment retry, and unlock a premium lead pack.
+This is LeadNestAI. It is a lead intelligence demo where the API can ask for payment and unlock a premium lead pack after payment proof.
 ```
 
 Then stop talking and let them look.
@@ -47,6 +47,12 @@ Then ask:
 
 ```txt
 What do you think the payment unlocks?
+```
+
+Then ask:
+
+```txt
+What do you think "machine-payable" means here?
 ```
 
 Then ask:
@@ -85,6 +91,12 @@ What business use case did they mention?
 What wording should change?
 
 Next improvement:
+```
+
+After the conversation, copy the useful notes into:
+
+```txt
+FEEDBACK_ITERATION_LOG.md
 ```
 
 ## 5. Top Confusion Points To Track

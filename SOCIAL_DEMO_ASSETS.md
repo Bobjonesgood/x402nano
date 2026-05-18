@@ -7,7 +7,7 @@ Use this file when sharing LeadNestAI publicly. The goal is to keep the explanat
 ```txt
 LeadNestAI is a machine-payable lead intelligence demo.
 
-It shows how a paid API can publish its price, return 402 Payment Required, accept an X-PAYMENT retry, generate a receipt, and unlock a premium lead intelligence pack.
+It shows how a paid API can publish its price, ask for payment, verify payment proof, generate a receipt, and unlock a premium lead intelligence pack.
 
 The public demo uses sandbox settlement, so no real funds move yet.
 ```
@@ -17,7 +17,7 @@ The public demo uses sandbox settlement, so no real funds move yet.
 ```txt
 I built a demo where lead intelligence can be sold directly through an API.
 
-Instead of a checkout page, the API itself tells a buyer or software agent what the lead pack costs. If the buyer has not paid, the API returns a payment challenge. After the buyer retries with payment, the API unlocks the premium lead intelligence and returns a receipt.
+Instead of a checkout page, the API itself tells a buyer or software agent what the lead pack costs. If the buyer has not paid, the API returns a payment challenge. After the buyer retries with payment proof, the API unlocks the premium lead intelligence and returns a receipt.
 
 This is sandbox settlement today, but the workflow is live and testable.
 ```
@@ -31,7 +31,7 @@ The workflow is simple:
 
 Discover -> Request -> Pay -> Unlock
 
-The API returns 402 Payment Required for the premium lead pack, then unlocks structured lead intelligence after an X-PAYMENT retry.
+The API asks for payment before releasing the premium lead pack, then unlocks structured lead intelligence after the buyer sends payment proof.
 
 This public version is sandbox settlement, so no real funds move yet. The point is to prove the workflow clearly before real settlement is enabled.
 

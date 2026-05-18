@@ -98,6 +98,7 @@ PUBLIC_DEMO_KIT.md
 DEMO_RECORDING_CHECKLIST.md
 SOCIAL_DEMO_ASSETS.md
 FIRST_VIEWER_FEEDBACK.md
+FEEDBACK_ITERATION_LOG.md
 ```
 
 Commercial architecture:
@@ -193,6 +194,7 @@ PUBLIC_DEMO_KIT.md                  public sharing copy, demo script, and screen
 DEMO_RECORDING_CHECKLIST.md         short walkthrough recording checklist
 SOCIAL_DEMO_ASSETS.md               post copy, captions, and short public explanations
 FIRST_VIEWER_FEEDBACK.md            first-viewer feedback questions and notes template
+FEEDBACK_ITERATION_LOG.md           running log for confusion patterns and wording changes
 assets/screenshots/README.md        screenshot asset guide for public sharing
 RUNBOOK.md                          operating checklist
 REAL_X402_SETUP.md                  settlement setup notes

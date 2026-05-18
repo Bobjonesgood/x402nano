@@ -7,15 +7,15 @@ const buyerAddress = "0xAutonomousAgentWallet";
 const leadPackEndpoint = "/api/lead-intelligence/premium-pack";
 
 const howItWorksSteps = [
-  ["Discover", "/.well-known/x402.json tells buyers what exists, what it costs, and how to pay."],
-  ["Request", "The lead pack endpoint returns 402 instead of giving away the premium intelligence."],
-  ["Pay", "A sandbox X-PAYMENT payload proves the buyer accepted the quote."],
+  ["Discover", "A buyer or agent can find the paid lead pack and see what it costs."],
+  ["Request", "The API asks for payment before releasing the premium intelligence."],
+  ["Pay", "A sandbox payment proof shows the buyer accepted the quote."],
   ["Unlock", "LeadNestAI verifies payment, returns a receipt, and releases the lead intelligence pack."]
 ];
 
 const viewerCues = [
   ["What is locked?", "A premium LeadNestAI lead intelligence pack."],
-  ["What unlocks it?", "A sandbox payment payload sent back as X-PAYMENT."],
+  ["What unlocks it?", "A sandbox payment proof sent back to the API."],
   ["Is this real money?", "No. This public demo is sandbox settlement on purpose."]
 ];
 
@@ -194,7 +194,7 @@ function ViewerCuePanel() {
 function FaqPanel() {
   const faqs = [
     ["What does LeadNestAI sell?", "A structured lead intelligence pack with buying intent, pain points, estimated job value, recommended opener, and confidence score."],
-    ["Why does payment happen inside the API?", "The demo proves that a paid resource can be discovered, priced, challenged, paid for, and unlocked without a traditional checkout page."],
+    ["Why does payment happen inside the API?", "The demo proves that a paid resource can quote a price, ask for payment, verify payment proof, and unlock data without a traditional checkout page."],
     ["Is the public demo using real money?", "No. The public app uses sandbox settlement so the workflow can be shown safely while real facilitator settlement remains off."],
     ["Who is this for?", "The clearest first audience is service businesses, agencies, lead sellers, and technical buyers who understand paid lead value."],
     ["What should a viewer notice?", "The value is the unlocked lead intelligence. The x402-style flow is the infrastructure layer that makes the API machine-payable."]
@@ -528,7 +528,7 @@ function App() {
     <main>
       <section className="topbar">
         <div>
-          <span className="eyebrow">LeadNestAI x402 sandbox</span>
+          <span className="eyebrow">LeadNestAI public sandbox</span>
           <h1>LeadNestAI</h1>
         </div>
         <div className="statusPill">
@@ -544,11 +544,11 @@ function App() {
         </div>
         <div>
           <span>Discovery</span>
-          <strong>/.well-known/x402.json</strong>
+          <strong>API publishes price and rules</strong>
         </div>
         <div>
           <span>Unlock</span>
-          <strong>402 then X-PAYMENT retry</strong>
+          <strong>Payment proof unlocks data</strong>
         </div>
         <div>
           <span>Now</span>
