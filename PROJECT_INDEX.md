@@ -22,6 +22,12 @@ What it shows:
 - settlement readiness panel
 - proof/report section
 
+Visual proof assets:
+
+```txt
+assets/screenshots/
+```
+
 ## 2. Fastest Proof
 
 Run:
@@ -90,6 +96,8 @@ Public demo kit:
 ```txt
 PUBLIC_DEMO_KIT.md
 DEMO_RECORDING_CHECKLIST.md
+SOCIAL_DEMO_ASSETS.md
+FIRST_VIEWER_FEEDBACK.md
 ```
 
 Commercial architecture:
@@ -183,6 +191,9 @@ proofs/latest-demo-run.md           latest recorded proof transcript
 DEMO_REPORT.md                      plain-English proof/pitch report
 PUBLIC_DEMO_KIT.md                  public sharing copy, demo script, and screenshot checklist
 DEMO_RECORDING_CHECKLIST.md         short walkthrough recording checklist
+SOCIAL_DEMO_ASSETS.md               post copy, captions, and short public explanations
+FIRST_VIEWER_FEEDBACK.md            first-viewer feedback questions and notes template
+assets/screenshots/README.md        screenshot asset guide for public sharing
 RUNBOOK.md                          operating checklist
 REAL_X402_SETUP.md                  settlement setup notes
 REAL_SETTLEMENT_DRY_RUN.md          preflight before real settlement

@@ -59,6 +59,9 @@ Public demo kit:
 ```txt
 PUBLIC_DEMO_KIT.md
 DEMO_RECORDING_CHECKLIST.md
+SOCIAL_DEMO_ASSETS.md
+FIRST_VIEWER_FEEDBACK.md
+assets/screenshots/
 ```
 
 Commercial architecture docs:

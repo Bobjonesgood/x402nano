@@ -89,6 +89,12 @@ Capture these for GitHub, social posts, messages, or a pitch page:
 - latest proof transcript in `proofs/latest-demo-run.md`
 - `/api/version` response from the live deployment
 
+Current screenshot assets live here:
+
+```txt
+assets/screenshots/
+```
+
 ## 7. Honest Sandbox Language
 
 Use this language when explaining the current state:
@@ -208,4 +214,16 @@ Use the recording checklist before capturing a walkthrough:
 
 ```txt
 DEMO_RECORDING_CHECKLIST.md
+```
+
+Use the social asset sheet when writing posts or captions:
+
+```txt
+SOCIAL_DEMO_ASSETS.md
+```
+
+Use the feedback sheet after showing the demo:
+
+```txt
+FIRST_VIEWER_FEEDBACK.md
 ```
