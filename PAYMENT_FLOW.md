@@ -2,6 +2,19 @@
 
 This document explains the one polished workflow this demo is built around.
 
+```mermaid
+flowchart LR
+  Discover["Discover API"]
+  Request["Request Lead Pack"]
+  Challenge["Receive 402 Quote"]
+  Pay["Create X-PAYMENT"]
+  Retry["Retry Request"]
+  Unlock["Unlock Lead Intelligence"]
+  Receipt["Receive Receipt"]
+
+  Discover --> Request --> Challenge --> Pay --> Retry --> Unlock --> Receipt
+```
+
 ## Protected Resource
 
 ```txt
@@ -140,13 +153,19 @@ npm.cmd run demo:record
 
 The payment flow proves that LeadNestAI can become a machine-payable API:
 
-```txt
-discover
-quote
-pay
-retry
-unlock
-receipt
+```mermaid
+sequenceDiagram
+  participant Agent as Buyer Agent
+  participant LeadNestAI as LeadNestAI API
+  participant Settlement as Sandbox Provider Today
+
+  Agent->>LeadNestAI: Discover manifest
+  Agent->>LeadNestAI: Request premium pack
+  LeadNestAI-->>Agent: 402 + payment requirements
+  Agent->>Settlement: Create sandbox payment
+  Settlement-->>Agent: Encoded X-PAYMENT
+  Agent->>LeadNestAI: Retry with X-PAYMENT
+  LeadNestAI-->>Agent: Lead intelligence + receipt
 ```
 
 It does not claim real settlement until the facilitator dry run passes.

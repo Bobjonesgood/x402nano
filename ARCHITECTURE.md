@@ -8,15 +8,23 @@ LeadNestAI is the commercial front. The x402-style payment flow is the infrastru
 
 ## Core Components
 
-```txt
-React demo UI
-Node seller API
-x402-style payment challenge
-sandbox payment provider
-receipt store
-event log
-buyer scripts
-proof recorder
+```mermaid
+flowchart LR
+  UI["React Demo UI"]
+  Agent["Buyer Agent / Browser Wallet"]
+  API["LeadNestAI Seller API"]
+  Provider["Sandbox Payment Provider"]
+  Leads["Premium Lead Intelligence Pack"]
+  Receipts["Receipt Store"]
+  Events["Event Log"]
+
+  UI --> API
+  Agent --> API
+  API --> Provider
+  Provider --> API
+  API --> Leads
+  API --> Receipts
+  API --> Events
 ```
 
 ## Buyer Flow
@@ -29,6 +37,26 @@ proof recorder
 6. Seller verifies payment.
 7. Seller returns a LeadNestAI premium lead intelligence pack and receipt.
 
+```mermaid
+sequenceDiagram
+  participant Buyer as Buyer or Agent
+  participant API as LeadNestAI API
+  participant Pay as Payment Provider
+  participant Pack as Lead Intelligence Pack
+
+  Buyer->>API: GET /.well-known/x402.json
+  API-->>Buyer: paid endpoint, price, network, asset
+  Buyer->>API: GET /api/lead-intelligence/premium-pack
+  API-->>Buyer: 402 Payment Required + quote
+  Buyer->>Pay: create payment payload
+  Pay-->>Buyer: X-PAYMENT payload
+  Buyer->>API: retry with X-PAYMENT
+  API->>Pay: verify payment
+  Pay-->>API: verified
+  API->>Pack: unlock records
+  API-->>Buyer: lead pack + receipt
+```
+
 ## Seller Flow
 
 1. Publish a discovery manifest.
@@ -39,6 +67,17 @@ proof recorder
 6. Prevent replayed nonces.
 7. Generate receipts.
 8. Log quote, payment, unlock, and receipt events.
+
+```mermaid
+flowchart TD
+  Quote["quote_issued"]
+  Attempt["payment_attempted"]
+  Verified["payment_verified"]
+  Unlock["lead_pack_unlocked"]
+  Receipt["receipt_generated"]
+
+  Quote --> Attempt --> Verified --> Unlock --> Receipt
+```
 
 ## Receipt Flow
 

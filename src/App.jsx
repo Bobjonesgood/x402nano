@@ -109,6 +109,33 @@ function ReadinessPanel({ discovery }) {
   );
 }
 
+function UnlockValuePanel() {
+  const items = [
+    ["Buying intent", "Why this company may need service now"],
+    ["Pain points", "What problem to lead with in outreach"],
+    ["Job value", "Estimated commercial value of the opportunity"],
+    ["Opener", "A ready-to-use first message for outreach"]
+  ];
+
+  return (
+    <div className="unlockPanel">
+      <div>
+        <span className="eyebrow">what payment unlocks</span>
+        <h3>Premium lead intelligence for home-service sellers</h3>
+        <p>Instead of a generic contact list, the paid pack returns business context a seller can act on immediately.</p>
+      </div>
+      <div className="unlockGrid">
+        {items.map(([label, detail]) => (
+          <div key={label}>
+            <strong>{label}</strong>
+            <span>{detail}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ProofPage({ discovery }) {
   const paymentMode = discovery?.x402?.paymentMode ?? "loading";
   const settlement = discovery?.x402?.settlement ?? "loading";
@@ -471,6 +498,8 @@ function App() {
               <p>{discovery ? modeCopy[demoMode].body : "Discovering seller endpoint..."}</p>
             </div>
           </div>
+
+          <UnlockValuePanel />
 
           {demoMode === "agent" && (
             <>
