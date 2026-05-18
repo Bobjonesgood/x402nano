@@ -54,6 +54,12 @@ Trust statement:
 TRUST.md
 ```
 
+Public demo kit:
+
+```txt
+PUBLIC_DEMO_KIT.md
+```
+
 Commercial architecture docs:
 
 ```txt
