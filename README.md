@@ -58,6 +58,7 @@ Public demo kit:
 
 ```txt
 PUBLIC_DEMO_KIT.md
+DEMO_RECORDING_CHECKLIST.md
 ```
 
 Commercial architecture docs:

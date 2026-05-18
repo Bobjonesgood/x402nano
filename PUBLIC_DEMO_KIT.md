@@ -203,3 +203,9 @@ The next best proof asset is a short screen recording:
 - say clearly that settlement is sandboxed today
 
 The goal is not to impress people with complexity. The goal is for a stranger to understand the product in under one minute.
+
+Use the recording checklist before capturing a walkthrough:
+
+```txt
+DEMO_RECORDING_CHECKLIST.md
+```

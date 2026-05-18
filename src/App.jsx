@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot, CheckCircle2, CircleDollarSign, ClipboardCheck, DatabaseZap, KeyRound, Loader2, Play, Radar, ReceiptText, ShieldCheck, Wallet } from "lucide-react";
+import { Bot, CheckCircle2, CircleDollarSign, ClipboardCheck, DatabaseZap, HelpCircle, KeyRound, ListChecks, Loader2, Play, Radar, ReceiptText, ShieldCheck, Wallet } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -11,6 +11,12 @@ const howItWorksSteps = [
   ["Request", "The lead pack endpoint returns 402 instead of giving away the premium intelligence."],
   ["Pay", "A sandbox X-PAYMENT payload proves the buyer accepted the quote."],
   ["Unlock", "LeadNestAI verifies payment, returns a receipt, and releases the lead intelligence pack."]
+];
+
+const viewerCues = [
+  ["What is locked?", "A premium LeadNestAI lead intelligence pack."],
+  ["What unlocks it?", "A sandbox payment payload sent back as X-PAYMENT."],
+  ["Is this real money?", "No. This public demo is sandbox settlement on purpose."]
 ];
 
 function Step({ icon: Icon, title, detail, active, done }) {
@@ -160,6 +166,56 @@ function HowItWorksPanel() {
             <strong>{title}</strong>
             <p>{detail}</p>
           </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ViewerCuePanel() {
+  return (
+    <div className="viewerCuePanel">
+      <div className="viewerCueTitle">
+        <ListChecks size={18} />
+        <h3>First-Time Viewer Cues</h3>
+      </div>
+      <div className="viewerCueGrid">
+        {viewerCues.map(([question, answer]) => (
+          <div key={question}>
+            <strong>{question}</strong>
+            <span>{answer}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FaqPanel() {
+  const faqs = [
+    ["What does LeadNestAI sell?", "A structured lead intelligence pack with buying intent, pain points, estimated job value, recommended opener, and confidence score."],
+    ["Why does payment happen inside the API?", "The demo proves that a paid resource can be discovered, priced, challenged, paid for, and unlocked without a traditional checkout page."],
+    ["Is the public demo using real money?", "No. The public app uses sandbox settlement so the workflow can be shown safely while real facilitator settlement remains off."],
+    ["Who is this for?", "The clearest first audience is service businesses, agencies, lead sellers, and technical buyers who understand paid lead value."],
+    ["What should a viewer notice?", "The value is the unlocked lead intelligence. The x402-style flow is the infrastructure layer that makes the API machine-payable."]
+  ];
+
+  return (
+    <section className="faqPanel">
+      <div className="faqIntro">
+        <span className="eyebrow">quick answers</span>
+        <h2>FAQ For First-Time Viewers</h2>
+        <p>These are the questions most likely to come up when someone sees the demo cold.</p>
+      </div>
+      <div className="faqGrid">
+        {faqs.map(([question, answer]) => (
+          <article key={question}>
+            <div>
+              <HelpCircle size={18} />
+              <h3>{question}</h3>
+            </div>
+            <p>{answer}</p>
+          </article>
         ))}
       </div>
     </section>
@@ -532,6 +588,7 @@ function App() {
           </div>
 
           <UnlockValuePanel />
+          <ViewerCuePanel />
 
           {demoMode === "agent" && (
             <>
@@ -674,6 +731,7 @@ function App() {
       </section>
 
       <ProofPage discovery={discovery} />
+      <FaqPanel />
     </main>
   );
 }

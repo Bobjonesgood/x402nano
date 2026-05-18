@@ -89,6 +89,7 @@ Public demo kit:
 
 ```txt
 PUBLIC_DEMO_KIT.md
+DEMO_RECORDING_CHECKLIST.md
 ```
 
 Commercial architecture:
@@ -181,6 +182,7 @@ scripts/record-demo-run.js          markdown proof recorder
 proofs/latest-demo-run.md           latest recorded proof transcript
 DEMO_REPORT.md                      plain-English proof/pitch report
 PUBLIC_DEMO_KIT.md                  public sharing copy, demo script, and screenshot checklist
+DEMO_RECORDING_CHECKLIST.md         short walkthrough recording checklist
 RUNBOOK.md                          operating checklist
 REAL_X402_SETUP.md                  settlement setup notes
 REAL_SETTLEMENT_DRY_RUN.md          preflight before real settlement
