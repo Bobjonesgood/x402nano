@@ -15,7 +15,9 @@
     "demo:report": "node scripts/generate-demo-report.js",
     "demo:record": "node scripts/record-demo-run.js",
     "agent:real": "node scripts/real-x402-buyer.js",
-    "settlement:check": "node scripts/settlement-readiness.js"
+    "settlement:check": "node scripts/settlement-readiness.js",
+    "leadnestai:mock": "node scripts/mock-leadnestai-server.js",
+    "leadnestai:test": "node scripts/test-leadnestai-handoff.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",

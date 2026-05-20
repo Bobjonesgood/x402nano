@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot, CheckCircle2, CircleDollarSign, ClipboardCheck, DatabaseZap, HelpCircle, KeyRound, ListChecks, Loader2, Play, Radar, ReceiptText, ShieldCheck, Wallet } from "lucide-react";
+import { Bot, CheckCircle2, CircleDollarSign, ClipboardCheck, DatabaseZap, HelpCircle, KeyRound, ListChecks, Loader2, Play, Radar, ReceiptText, Send, ShieldCheck, Wallet } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -287,6 +287,7 @@ function App() {
   const [error, setError] = useState("");
   const [autonomous, setAutonomous] = useState(true);
   const [walletAddress, setWalletAddress] = useState("");
+  const [handoffs, setHandoffs] = useState({});
 
   const paid = Boolean(receipt);
   const busy = phase === "requesting" || phase === "signing" || phase === "unlocking" || phase === "wallet";
@@ -380,6 +381,7 @@ function App() {
     setError("");
     setLeads([]);
     setReceipt(null);
+    setHandoffs({});
     setSignature("");
     setRequirements(null);
 
@@ -455,6 +457,7 @@ function App() {
     setError("");
     setLeads([]);
     setReceipt(null);
+    setHandoffs({});
     setSignature("");
     setRequirements(null);
 
@@ -521,6 +524,48 @@ function App() {
       setPhase("idle");
       setError(walletError.message);
       appendLog(`Wallet flow stopped: ${walletError.message}`);
+    }
+  }
+
+  async function sendLeadToLeadNestAI(lead) {
+    if (!receipt?.id) return;
+
+    setHandoffs(current => ({
+      ...current,
+      [lead.id]: { status: "sending", message: "Sending to LeadNestAI..." }
+    }));
+    appendLog(`LeadNestAI handoff attempted for ${lead.businessName}.`);
+
+    try {
+      const response = await fetch("/api/leadnestai/handoff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiptId: receipt.id,
+          externalLeadId: lead.id
+        })
+      });
+      const body = await response.json();
+
+      if (!response.ok) {
+        throw new Error(body.reason ?? body.error ?? "LeadNestAI handoff failed.");
+      }
+
+      const duplicateText = body.duplicate ? "Duplicate found" : "Stored";
+      setHandoffs(current => ({
+        ...current,
+        [lead.id]: {
+          status: body.duplicate ? "duplicate" : "sent",
+          message: `${duplicateText} in LeadNestAI${body.leadId ? ` as ${body.leadId}` : ""}.`
+        }
+      }));
+      appendLog(`LeadNestAI handoff ${body.duplicate ? "deduplicated" : "succeeded"} for ${lead.businessName}.`);
+    } catch (handoffError) {
+      setHandoffs(current => ({
+        ...current,
+        [lead.id]: { status: "failed", message: handoffError.message }
+      }));
+      appendLog(`LeadNestAI handoff failed for ${lead.businessName}.`);
     }
   }
 
@@ -707,6 +752,20 @@ function App() {
                     <span>{lead.location ?? lead.estimatedJobValue}</span>
                     <span>{lead.estimatedJobValue ?? lead.budget}</span>
                     <b>{lead.confidenceScore ?? lead.fit}% confidence</b>
+                  </div>
+                  <div className="handoffActions">
+                    <button
+                      className="handoffButton"
+                      disabled={!receipt?.id || handoffs[lead.id]?.status === "sending"}
+                      onClick={() => sendLeadToLeadNestAI(lead)}
+                      type="button"
+                    >
+                      {handoffs[lead.id]?.status === "sending" ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
+                      Send to LeadNestAI
+                    </button>
+                    {handoffs[lead.id]?.message && (
+                      <span className={`handoffStatus ${handoffs[lead.id]?.status ?? ""}`}>{handoffs[lead.id].message}</span>
+                    )}
                   </div>
                 </article>
               ))

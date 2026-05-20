@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { encodePaymentRequiredHeader, encodePaymentResponseHeader } from "@x402/core/http";
+import { buildLeadHandoffPayload, leadNestAIConfig, leadNestAIReadiness, submitLeadToLeadNestAI } from "./leadnestai-client.js";
 import { createFacilitatorProvider, createSandboxProvider } from "./payment-providers.js";
 
 const PORT = Number(process.env.PORT ?? 4021);
@@ -78,6 +79,7 @@ const issuedRequirements = new Map();
 const usedNonces = new Set();
 const rateLimits = new Map();
 const eventLog = [];
+const leadNestAI = leadNestAIConfig();
 
 function isProtectedResource(pathname) {
   return pathname === RESOURCE_PATH || pathname === LEGACY_RESOURCE_PATH;
@@ -187,7 +189,7 @@ function json(res, statusCode, body, extraHeaders = {}) {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,X-PAYMENT,PAYMENT-SIGNATURE",
+    "Access-Control-Allow-Headers": "Authorization,Content-Type,Idempotency-Key,X-PAYMENT,PAYMENT-SIGNATURE",
     ...extraHeaders
   });
   res.end(JSON.stringify(body, null, 2));
@@ -252,7 +254,25 @@ function versionPayload() {
       amount: PRICE_USDC,
       sellerWallet: sellerWalletStatus()
     },
+    leadNestAI: leadNestAIReadiness(leadNestAI),
     build: buildInfo()
+  };
+}
+
+function publicReceipt(receipt) {
+  if (!receipt) return null;
+  return {
+    id: receipt.id,
+    payer: receipt.payer,
+    seller: receipt.seller,
+    amount: receipt.amount,
+    asset: receipt.asset,
+    network: receipt.network,
+    resource: receipt.resource,
+    mode: receipt.mode,
+    transaction: receipt.transaction,
+    provider: receipt.provider,
+    settledAt: receipt.settledAt
   };
 }
 
@@ -507,6 +527,7 @@ function apiDiscovery(req) {
       supportedAssets: [ASSET],
       sellerWallet: sellerWalletStatus()
     },
+    leadNestAI: leadNestAIReadiness(leadNestAI),
     links: {
       self: `${origin}/.well-known/x402.json`,
       health: `${origin}/api/health`,
@@ -515,6 +536,7 @@ function apiDiscovery(req) {
       schema: `${origin}/api/schema`,
       paidResource: `${origin}${RESOURCE_PATH}`,
       sandboxSigner: paymentProvider.isClientSigningAvailable ? `${origin}/api/payments/sign` : null,
+      leadNestAIHandoff: `${origin}/api/leadnestai/handoff`,
       receiptTemplate: `${origin}/api/receipts/{receiptId}`
     },
     endpoints: [
@@ -648,6 +670,70 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
+  if (req.method === "GET" && url.pathname === "/api/leadnestai/status") {
+    return json(res, 200, {
+      status: "ok",
+      handoff: leadNestAIReadiness(leadNestAI),
+      settlementMode: paymentProvider.mode,
+      automaticOutreach: false
+    });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/leadnestai/handoff") {
+    try {
+      if (paymentProvider.mode !== "sandbox") {
+        return json(res, 409, {
+          error: "LeadNestAI handoff is sandbox-only in this version.",
+          reason: "Keep real settlement separated until the handoff workflow is stable."
+        });
+      }
+
+      const body = await readBody(req);
+      const receiptId = body.receiptId ?? body.receipt?.id;
+      const externalLeadId = body.externalLeadId ?? body.lead?.id;
+      const receipt = payments.get(receiptId);
+      const lead = premiumLeadPack.find(record => record.id === externalLeadId);
+
+      if (!receipt) return json(res, 404, { error: "Receipt not found. Unlock the lead pack before handoff." });
+      if (!lead) return json(res, 404, { error: "Lead not found in the unlocked premium pack." });
+
+      const payload = buildLeadHandoffPayload({ config: leadNestAI, receipt, lead });
+      logEvent("lead_handoff_attempted", {
+        receiptId: payload.receiptId,
+        externalLeadId: payload.externalLeadId,
+        idempotencyKey: payload.idempotencyKey,
+        target: leadNestAI.apiUrl || "not_configured",
+        mode: paymentProvider.mode
+      });
+
+      const result = await submitLeadToLeadNestAI({ config: leadNestAI, payload });
+      logEvent(result.ok ? "lead_handoff_succeeded" : "lead_handoff_failed", {
+        receiptId: payload.receiptId,
+        externalLeadId: payload.externalLeadId,
+        idempotencyKey: payload.idempotencyKey,
+        status: result.status,
+        statusCode: result.statusCode,
+        leadId: result.leadId,
+        duplicate: result.duplicate,
+        reason: result.reason
+      });
+
+      return json(res, result.statusCode ?? (result.ok ? 200 : 502), {
+        status: result.status,
+        ok: result.ok,
+        duplicate: result.duplicate ?? false,
+        leadId: result.leadId,
+        payload,
+        leadNestAI: result.response ?? { reason: result.reason }
+      });
+    } catch {
+      logEvent("lead_handoff_failed", {
+        reason: "Invalid LeadNestAI handoff request."
+      });
+      return json(res, 400, { error: "Invalid LeadNestAI handoff request." });
+    }
+  }
+
   if (req.method === "GET" && url.pathname.startsWith("/api/receipts/")) {
     const receiptId = url.pathname.split("/").pop();
     const receipt = payments.get(receiptId);
@@ -743,7 +829,7 @@ const server = http.createServer(async (req, res) => {
 
     return json(res, 200, {
       status: "unlocked",
-      receipt: verification.receipt,
+      receipt: publicReceipt(verification.receipt),
       data: premiumLeadPack
     }, {
       "PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse),

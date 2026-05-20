@@ -15,6 +15,8 @@ flowchart LR
   API["LeadNestAI Seller API"]
   Provider["Sandbox Payment Provider"]
   Leads["Premium Lead Intelligence Pack"]
+  Handoff["Manual LeadNestAI Handoff"]
+  LeadNest["LeadNestAI Ingest API"]
   Receipts["Receipt Store"]
   Events["Event Log"]
 
@@ -23,6 +25,8 @@ flowchart LR
   API --> Provider
   Provider --> API
   API --> Leads
+  Leads --> Handoff
+  Handoff --> LeadNest
   API --> Receipts
   API --> Events
 ```
@@ -109,6 +113,9 @@ The server keeps a lightweight in-memory event log for future metering:
 - `payment_verified`
 - `lead_pack_unlocked`
 - `receipt_generated`
+- `lead_handoff_attempted`
+- `lead_handoff_succeeded`
+- `lead_handoff_failed`
 
 The current event endpoint is:
 
@@ -117,6 +124,34 @@ The current event endpoint is:
 ```
 
 This is a structure for future usage metering, analytics, billing records, and operational debugging. It is not a production database yet.
+
+## LeadNestAI Handoff Flow
+
+The first integration is intentionally manual and sandbox-only:
+
+1. x402 unlocks the premium lead pack.
+2. The user selects one lead and clicks `Send to LeadNestAI`.
+3. The x402 server validates the receipt and selected lead id.
+4. The x402 server forwards the lead to LeadNestAI with bearer-token auth.
+5. LeadNestAI deduplicates by `source + receiptId + externalLeadId`.
+6. LeadNestAI also checks `businessName + location + industry`.
+7. LeadNestAI stores the lead and starts only the normal intake workflow, not automatic outreach.
+
+```mermaid
+sequenceDiagram
+  participant UI as x402 Demo UI
+  participant X402 as x402 Seller API
+  participant LNAI as LeadNestAI Ingest API
+
+  UI->>X402: POST /api/leadnestai/handoff
+  X402->>X402: validate receipt and selected lead
+  X402->>LNAI: POST /api/integrations/x402/leads
+  LNAI->>LNAI: dedupe idempotency and business identity
+  LNAI-->>X402: stored or duplicate
+  X402-->>UI: handoff result
+```
+
+This bridge does not enable real settlement and does not trigger automatic outreach yet.
 
 ## Settlement Modes
 

@@ -108,6 +108,69 @@ GET /api/receipts/{receiptId}
 
 Returns a receipt if it is still retained in memory.
 
+## LeadNestAI Handoff Status
+
+```txt
+GET /api/leadnestai/status
+```
+
+Returns whether the manual LeadNestAI handoff bridge is enabled and configured.
+
+## Manual LeadNestAI Handoff
+
+```txt
+POST /api/leadnestai/handoff
+```
+
+Sandbox-only endpoint that forwards one selected unlocked lead to LeadNestAI.
+
+The browser calls this x402 server endpoint. The x402 server then calls:
+
+```txt
+POST {LEADNESTAI_API_URL}/api/integrations/x402/leads
+Authorization: Bearer {LEADNESTAI_INGEST_SECRET}
+```
+
+Request:
+
+```json
+{
+  "receiptId": "receipt-id-from-unlock",
+  "externalLeadId": "lnai_pack_001"
+}
+```
+
+Forwarded payload fields:
+
+```txt
+source
+receiptId
+unlockMode
+externalLeadId
+businessName
+industry
+location
+estimatedJobValue
+buyingIntent
+painPoints
+recommendedOpener
+confidenceScore
+idempotencyKey
+dedupeKey
+```
+
+The idempotency key is:
+
+```txt
+source + receiptId + externalLeadId
+```
+
+The business dedupe key is:
+
+```txt
+businessName + location + industry
+```
+
 ## Events
 
 ```txt
@@ -121,6 +184,9 @@ Returns the latest retained event log entries:
 - payment verified
 - lead pack unlocked
 - receipt generated
+- lead handoff attempted
+- lead handoff succeeded
+- lead handoff failed
 
 This is a future metering/logging structure. It is not a production analytics database yet.
 

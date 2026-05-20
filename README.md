@@ -129,6 +129,14 @@ Run the deploy smoke test:
 npm.cmd run smoke
 ```
 
+Run the local LeadNestAI handoff integration test:
+
+```powershell
+npm.cmd run leadnestai:test
+```
+
+This starts a mock LeadNestAI receiver, unlocks a sandbox lead pack, manually submits one selected lead, verifies duplicate handling, and confirms both x402 and LeadNestAI-style handoff logs.
+
 Check release/build metadata:
 
 ```txt
@@ -174,6 +182,34 @@ $env:BUYER_PRIVATE_KEY="0xYourBaseSepoliaTestPrivateKey"
 $env:BASE_SEPOLIA_RPC_URL="https://your-base-sepolia-rpc"
 npm.cmd run agent:real
 ```
+
+## LeadNestAI Handoff
+
+The first bridge between the x402 unlock layer and LeadNestAI is manual, sandbox-only, and selected-lead-only.
+
+x402 side:
+
+```txt
+LEAD_HANDOFF_ENABLED=false
+LEADNESTAI_API_URL=
+LEADNESTAI_INGEST_SECRET=
+LEADNESTAI_SOURCE_ID=x402nano
+```
+
+LeadNestAI receive endpoint:
+
+```txt
+POST /api/integrations/x402/leads
+Authorization: Bearer {LEADNESTAI_INGEST_SECRET}
+```
+
+Local mock receiver:
+
+```powershell
+npm.cmd run leadnestai:mock
+```
+
+No real settlement is required for this integration.
 
 ## Public Sandbox Deploy
 

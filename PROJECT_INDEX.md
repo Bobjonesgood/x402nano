@@ -107,6 +107,7 @@ Commercial architecture:
 ARCHITECTURE.md
 PAYMENT_FLOW.md
 API_OVERVIEW.md
+LEADNESTAI_INTEGRATION.md
 ```
 
 ## 4. Operating Commands
@@ -129,6 +130,12 @@ Run the autonomous buyer proof:
 ```powershell
 $env:AGENT_API_ORIGIN="https://x402nano.onrender.com"
 npm.cmd run agent:buyer
+```
+
+Run the local LeadNestAI handoff test:
+
+```powershell
+npm.cmd run leadnestai:test
 ```
 
 Record a fresh proof transcript:
@@ -204,6 +211,7 @@ TRUST.md                            proof boundaries and verification statement
 ARCHITECTURE.md                     buyer, seller, receipt, and event architecture
 PAYMENT_FLOW.md                     discover, quote, pay, retry, unlock workflow
 API_OVERVIEW.md                     LeadNestAI API endpoint reference
+LEADNESTAI_INTEGRATION.md           x402 to LeadNestAI handoff plan and test flow
 ```
 
 ## 8. What To Do Next
