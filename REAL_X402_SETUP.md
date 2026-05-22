@@ -92,5 +92,8 @@ After testnet validation:
 
 - Change `X402_NETWORK` from Base Sepolia `eip155:84532` to Base mainnet `eip155:8453`.
 - Set `SELLER_ADDRESS` to your real receiving wallet.
-- Use a production facilitator URL.
+- Use the CDP production facilitator URL: `https://api.cdp.coinbase.com/platform/v2/x402`.
+- Add CDP facilitator authentication support before switching Render to mainnet mode.
 - Keep the same `402` challenge and `X-PAYMENT` retry contract.
+
+See `MAINNET_REVENUE_READINESS.md` before turning on a real-money endpoint.
