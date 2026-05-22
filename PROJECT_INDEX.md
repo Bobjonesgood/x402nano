@@ -67,6 +67,12 @@ Live x402 to LeadNestAI bridge proof:
 X402_TO_LEADNESTAI_LIVE_PROOF.md
 ```
 
+Base Sepolia real settlement proof:
+
+```txt
+BASE_SEPOLIA_REAL_SETTLEMENT_PROOF.md
+```
+
 Daily operations checklist:
 
 ```txt
@@ -204,6 +210,7 @@ scripts/record-demo-run.js          markdown proof recorder
 proofs/latest-demo-run.md           latest recorded proof transcript
 DEMO_REPORT.md                      plain-English proof/pitch report
 X402_TO_LEADNESTAI_LIVE_PROOF.md   live bridge proof from x402 unlock to LeadNestAI storage
+BASE_SEPOLIA_REAL_SETTLEMENT_PROOF.md first Base Sepolia x402 facilitator payment proof
 PUBLIC_DEMO_KIT.md                  public sharing copy, demo script, and screenshot checklist
 DEMO_RECORDING_CHECKLIST.md         short walkthrough recording checklist
 SOCIAL_DEMO_ASSETS.md               post copy, captions, and short public explanations
