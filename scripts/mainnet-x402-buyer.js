@@ -1,19 +1,36 @@
 import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
 import { registerExactEvmScheme } from "@x402/evm/exact/client";
+import fs from "node:fs/promises";
 import { createPublicClient, erc20Abi, formatUnits, http } from "viem";
 import { base } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 
 const DEFAULT_API_ORIGIN = "https://x402nano.onrender.com";
+const DEFAULT_BASE_MAINNET_RPC_URL = "https://mainnet.base.org";
 const MAINNET_NETWORK = "eip155:8453";
 const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const PAYMENT_ACK = "PAY_REAL_0.05_USDC";
 const DEFAULT_MAX_USDC = "0.05";
 const EVM_ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
 
+async function loadLocalEnv(file) {
+  try {
+    const content = await fs.readFile(file, "utf8");
+    for (const line of content.split(/\r?\n/)) {
+      const match = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+      if (!match || process.env[match[1]]) continue;
+      process.env[match[1]] = match[2];
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+}
+
+await loadLocalEnv(".env.mainnet.local");
+
 const apiOrigin = (process.env.AGENT_API_ORIGIN ?? DEFAULT_API_ORIGIN).replace(/\/$/, "");
 const privateKey = process.env.MAINNET_BUYER_PRIVATE_KEY?.trim();
-const rpcUrl = process.env.BASE_MAINNET_RPC_URL?.trim();
+const rpcUrl = process.env.BASE_MAINNET_RPC_URL?.trim() || DEFAULT_BASE_MAINNET_RPC_URL;
 const paymentAck = process.env.MAINNET_PAYMENT_ACK?.trim();
 const maxUsdc = process.env.MAINNET_MAX_USDC?.trim() || DEFAULT_MAX_USDC;
 const expectedSeller = process.env.MAINNET_EXPECTED_SELLER_ADDRESS?.trim();
@@ -136,10 +153,16 @@ async function run() {
   console.log(`seller: ${requirements.payTo}`);
   console.log(`records: ${version.product?.records ?? 0}`);
 
-  if (!privateKey || paymentAck !== PAYMENT_ACK || !rpcUrl) {
+  if (!privateKey || paymentAck !== PAYMENT_ACK) {
     console.log("\nPreflight passed. No real payment was sent.");
     if (!privateKey) console.log("Set MAINNET_BUYER_PRIVATE_KEY for the dedicated tiny-funded mainnet buyer wallet.");
-    if (!rpcUrl) console.log("Set BASE_MAINNET_RPC_URL so the script can verify buyer and seller USDC balances.");
+    if (privateKey) {
+      const preflightAccount = privateKeyToAccount(privateKey);
+      const preflightClient = createPublicClient({ chain: base, transport: http(rpcUrl) });
+      const buyerUsdc = await readUsdcBalance(preflightClient, preflightAccount.address);
+      console.log(`local buyer: ${preflightAccount.address}`);
+      console.log(`local buyer Base USDC: ${formatUnits(buyerUsdc, 6)}`);
+    }
     if (paymentAck !== PAYMENT_ACK) console.log(`Set MAINNET_PAYMENT_ACK=${PAYMENT_ACK} only when you are ready to send the first real 0.05 USDC payment.`);
     return;
   }

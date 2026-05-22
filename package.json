@@ -16,6 +16,7 @@
     "demo:record": "node scripts/record-demo-run.js",
     "agent:real": "node scripts/real-x402-buyer.js",
     "agent:mainnet": "node scripts/mainnet-x402-buyer.js",
+    "wallet:mainnet:create": "node scripts/create-mainnet-buyer-wallet.js",
     "settlement:check": "node scripts/settlement-readiness.js",
     "leadpack:prepare": "node scripts/prepare-production-pack.js",
     "leadnestai:mock": "node scripts/mock-leadnestai-server.js",

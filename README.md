@@ -283,7 +283,8 @@ For the first paid pack data boundary and controlled mainnet switch, see:
 Mainnet buyer preflight:
 
 ```powershell
+npm.cmd run wallet:mainnet:create
 npm.cmd run agent:mainnet
 ```
 
-That command refuses to pay without `MAINNET_BUYER_PRIVATE_KEY`, `BASE_MAINNET_RPC_URL`, and the explicit `MAINNET_PAYMENT_ACK` local acknowledgement.
+The wallet helper writes a fresh dedicated buyer key to ignored `.env.mainnet.local` and prints only the public address. The buyer command loads that local file when present and refuses to pay without `MAINNET_BUYER_PRIVATE_KEY` and the explicit `MAINNET_PAYMENT_ACK` local acknowledgement. The wallet setup helper uses Base's public mainnet RPC as a first-proof default; replace `BASE_MAINNET_RPC_URL` with a dedicated provider for production operations.

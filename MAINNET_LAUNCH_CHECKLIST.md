@@ -59,7 +59,13 @@ Keep buyer private keys off Render.
 
 ## 5. First Real Payment
 
-- Use a dedicated tiny-funded Base mainnet buyer wallet.
+- Create a fresh dedicated local buyer wallet if needed:
+
+```powershell
+npm.cmd run wallet:mainnet:create
+```
+
+- Fund only the printed public address with the tiny Base mainnet amount needed for the first proof.
 - Run a no-funds preflight first:
 
 ```powershell
@@ -70,7 +76,7 @@ npm.cmd run agent:mainnet
 
 ```powershell
 $env:MAINNET_BUYER_PRIVATE_KEY="<dedicated tiny-funded Base mainnet buyer key>"
-$env:BASE_MAINNET_RPC_URL="<Base mainnet RPC URL>"
+$env:BASE_MAINNET_RPC_URL="<Base mainnet RPC URL or use the local file default>"
 $env:MAINNET_PAYMENT_ACK="PAY_REAL_0.05_USDC"
 $env:MAINNET_MAX_USDC="0.05"
 $env:MAINNET_EXPECTED_SELLER_ADDRESS="<reviewed seller address>"
