@@ -61,6 +61,12 @@ Plain-English demo report:
 DEMO_REPORT.md
 ```
 
+Live x402 to LeadNestAI bridge proof:
+
+```txt
+X402_TO_LEADNESTAI_LIVE_PROOF.md
+```
+
 Daily operations checklist:
 
 ```txt
@@ -197,6 +203,7 @@ scripts/settlement-readiness.js     readiness checker
 scripts/record-demo-run.js          markdown proof recorder
 proofs/latest-demo-run.md           latest recorded proof transcript
 DEMO_REPORT.md                      plain-English proof/pitch report
+X402_TO_LEADNESTAI_LIVE_PROOF.md   live bridge proof from x402 unlock to LeadNestAI storage
 PUBLIC_DEMO_KIT.md                  public sharing copy, demo script, and screenshot checklist
 DEMO_RECORDING_CHECKLIST.md         short walkthrough recording checklist
 SOCIAL_DEMO_ASSETS.md               post copy, captions, and short public explanations
