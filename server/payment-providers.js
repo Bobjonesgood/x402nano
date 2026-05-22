@@ -108,7 +108,7 @@ export function createFacilitatorProvider({ facilitatorUrl, facilitatorApiKey })
   }
 
   function accepted(data) {
-    return data.valid === true || data.success === true || data.status === "valid" || data.status === "settled";
+    return data.isValid === true || data.valid === true || data.success === true || data.status === "valid" || data.status === "settled";
   }
 
   return {
