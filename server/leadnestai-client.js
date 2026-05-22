@@ -7,10 +7,25 @@ function secretFingerprint(value) {
   return createHash("sha256").update(value).digest("hex").slice(0, 12);
 }
 
+function canonicalLeadNestAIUrl(value) {
+  const apiUrl = value.trim();
+  if (!apiUrl) return "";
+
+  try {
+    const url = new URL(apiUrl);
+    if (url.protocol === "https:" && url.hostname === "leadnestai.net") {
+      url.hostname = "www.leadnestai.net";
+    }
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return apiUrl;
+  }
+}
+
 export function leadNestAIConfig(env = process.env) {
   return {
     enabled: env.LEAD_HANDOFF_ENABLED === "true",
-    apiUrl: (env.LEADNESTAI_API_URL ?? "").trim(),
+    apiUrl: canonicalLeadNestAIUrl(env.LEADNESTAI_API_URL ?? ""),
     ingestSecret: (env.LEADNESTAI_INGEST_SECRET ?? "").trim(),
     source: (env.LEADNESTAI_SOURCE_ID ?? "x402nano").trim() || "x402nano"
   };

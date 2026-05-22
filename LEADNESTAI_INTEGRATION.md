@@ -171,7 +171,7 @@ After local testing passes, configure Render:
 
 ```txt
 LEAD_HANDOFF_ENABLED=true
-LEADNESTAI_API_URL=https://leadnestai.net
+LEADNESTAI_API_URL=https://www.leadnestai.net
 LEADNESTAI_INGEST_SECRET=<shared-secret>
 LEADNESTAI_SOURCE_ID=x402nano
 ```

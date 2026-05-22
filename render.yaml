@@ -19,7 +19,7 @@ services:
       - key: LEAD_HANDOFF_ENABLED
         value: "true"
       - key: LEADNESTAI_API_URL
-        value: https://leadnestai.net
+        value: https://www.leadnestai.net
       - key: LEADNESTAI_SOURCE_ID
         value: x402nano
       - key: LEADNESTAI_INGEST_SECRET
