@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { encodePaymentRequiredHeader, encodePaymentResponseHeader } from "@x402/core/http";
+import { DEFAULT_STABLECOINS } from "@x402/evm";
 import { buildLeadHandoffPayload, leadNestAIConfig, leadNestAIReadiness, submitLeadToLeadNestAI } from "./leadnestai-client.js";
 import { createFacilitatorProvider, createSandboxProvider } from "./payment-providers.js";
 
@@ -343,17 +344,43 @@ function paymentRequirements() {
 }
 
 function officialPaymentRequirements(requirements) {
+  const exactAsset = facilitatorAssetRequirements(requirements);
+
   return {
     scheme: requirements.scheme,
     network: requirements.network,
-    asset: requirements.asset,
-    amount: requirements.amount,
+    asset: exactAsset.asset,
+    amount: exactAsset.amount,
     payTo: requirements.payTo,
     maxTimeoutSeconds: requirements.maxTimeoutSeconds,
     extra: {
+      ...exactAsset.extra,
       nonce: requirements.nonce,
       expiresAt: requirements.expiresAt,
       resource: requirements.resource
+    }
+  };
+}
+
+function toAtomicAmount(amount, decimals) {
+  const [whole = "0", fraction = ""] = String(amount).split(".");
+  return `${whole}${fraction.padEnd(decimals, "0").slice(0, decimals)}`.replace(/^0+(?=\d)/, "") || "0";
+}
+
+function facilitatorAssetRequirements(requirements) {
+  const defaultAsset = DEFAULT_STABLECOINS[requirements.network];
+
+  if (requirements.asset !== "USDC" || !defaultAsset) {
+    return { asset: requirements.asset, amount: requirements.amount, extra: {} };
+  }
+
+  return {
+    asset: defaultAsset.address,
+    amount: toAtomicAmount(requirements.amount, defaultAsset.decimals),
+    extra: {
+      name: defaultAsset.name,
+      version: defaultAsset.version,
+      ...(defaultAsset.assetTransferMethod ? { assetTransferMethod: defaultAsset.assetTransferMethod } : {})
     }
   };
 }
@@ -385,13 +412,22 @@ function parsePaymentHeader(header) {
 
 function normalizeRequirements(requirements, payment = {}) {
   if (!requirements) return null;
+  const facilitatorAsset = facilitatorAssetRequirements({
+    network: requirements.network,
+    asset: ASSET,
+    amount: PRICE_USDC
+  });
+  const isFacilitatorUsdcRequirement =
+    paymentProvider.mode === "facilitator" &&
+    requirements.asset === facilitatorAsset.asset &&
+    requirements.amount === facilitatorAsset.amount;
 
   return {
     x402Version: String(requirements.x402Version ?? (paymentProvider.mode === "facilitator" ? "1" : "sandbox-1")),
     scheme: requirements.scheme,
     network: requirements.network,
-    asset: requirements.asset,
-    amount: requirements.amount,
+    asset: isFacilitatorUsdcRequirement ? ASSET : requirements.asset,
+    amount: isFacilitatorUsdcRequirement ? PRICE_USDC : requirements.amount,
     payTo: requirements.payTo,
     resource: requirements.resource ?? requirements.extra?.resource ?? RESOURCE_PATH,
     description: requirements.description ?? "LeadNestAI premium lead intelligence pack for sales agents and service businesses",
