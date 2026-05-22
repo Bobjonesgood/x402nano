@@ -1,11 +1,18 @@
+import { createHash } from "node:crypto";
+
 const LEAD_HANDOFF_TIMEOUT_MS = 10000;
+
+function secretFingerprint(value) {
+  if (!value) return null;
+  return createHash("sha256").update(value).digest("hex").slice(0, 12);
+}
 
 export function leadNestAIConfig(env = process.env) {
   return {
     enabled: env.LEAD_HANDOFF_ENABLED === "true",
-    apiUrl: env.LEADNESTAI_API_URL ?? "",
-    ingestSecret: env.LEADNESTAI_INGEST_SECRET ?? "",
-    source: env.LEADNESTAI_SOURCE_ID ?? "x402nano"
+    apiUrl: (env.LEADNESTAI_API_URL ?? "").trim(),
+    ingestSecret: (env.LEADNESTAI_INGEST_SECRET ?? "").trim(),
+    source: (env.LEADNESTAI_SOURCE_ID ?? "x402nano").trim() || "x402nano"
   };
 }
 
@@ -15,6 +22,7 @@ export function leadNestAIReadiness(config) {
     configured: Boolean(config.apiUrl && config.ingestSecret),
     apiUrl: config.apiUrl || null,
     source: config.source,
+    secretFingerprint: secretFingerprint(config.ingestSecret),
     mode: "manual-selected-leads-only"
   };
 }
