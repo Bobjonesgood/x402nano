@@ -279,3 +279,11 @@ For the first paid pack data boundary and controlled mainnet switch, see:
 
 - [PRODUCTION_LEAD_PACK.md](PRODUCTION_LEAD_PACK.md)
 - [MAINNET_LAUNCH_CHECKLIST.md](MAINNET_LAUNCH_CHECKLIST.md)
+
+Mainnet buyer preflight:
+
+```powershell
+npm.cmd run agent:mainnet
+```
+
+That command refuses to pay without `MAINNET_BUYER_PRIVATE_KEY`, `BASE_MAINNET_RPC_URL`, and the explicit `MAINNET_PAYMENT_ACK` local acknowledgement.

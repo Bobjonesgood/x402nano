@@ -60,6 +60,24 @@ Keep buyer private keys off Render.
 ## 5. First Real Payment
 
 - Use a dedicated tiny-funded Base mainnet buyer wallet.
+- Run a no-funds preflight first:
+
+```powershell
+npm.cmd run agent:mainnet
+```
+
+- For one controlled real payment, set local-only buyer variables:
+
+```powershell
+$env:MAINNET_BUYER_PRIVATE_KEY="<dedicated tiny-funded Base mainnet buyer key>"
+$env:BASE_MAINNET_RPC_URL="<Base mainnet RPC URL>"
+$env:MAINNET_PAYMENT_ACK="PAY_REAL_0.05_USDC"
+$env:MAINNET_MAX_USDC="0.05"
+$env:MAINNET_EXPECTED_SELLER_ADDRESS="<reviewed seller address>"
+npm.cmd run agent:mainnet
+```
+
+- Do not put buyer variables in Render.
 - Make one controlled payment only.
 - Confirm the paid response returns the expected receipt and first pack.
 - Confirm the seller wallet receives the expected USDC amount.
