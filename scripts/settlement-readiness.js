@@ -128,7 +128,12 @@ async function run() {
       check(provider.authMode === "cdp-jwt", "CDP facilitator auth", "CDP JWT configured", "set CDP_API_KEY_ID and CDP_API_KEY_SECRET in Render", warnings);
     }
     if (sellerWallet.isValid === true || EVM_ADDRESS_PATTERN.test(sellerAddress ?? "")) {
-      pass("real settlement status", "server appears ready for npm.cmd run agent:real");
+      pass(
+        "real settlement status",
+        network === "eip155:8453"
+          ? "server appears ready for a controlled mainnet payment"
+          : "server appears ready for npm.cmd run agent:real"
+      );
     } else {
       warn("real settlement status", "facilitator mode is on, but seller wallet is not valid yet");
     }
@@ -136,8 +141,12 @@ async function run() {
 
   const localSellerAddress = localEnv("SELLER_ADDRESS") || localEnv("PARTNER_SELLER_ADDRESS");
   check(Boolean(localSellerAddress), "local seller env", localSellerAddress ? maskAddress(localSellerAddress) : "", "optional locally; required in Render before real settlement", warnings);
-  check(Boolean(localEnv("BUYER_PRIVATE_KEY")), "local buyer private key", "present, not printed", "needed only when running npm.cmd run agent:real from this machine", warnings);
-  check(Boolean(localEnv("BASE_SEPOLIA_RPC_URL")), "local Base Sepolia RPC", "present", "needed only when running npm.cmd run agent:real from this machine", warnings);
+  if (network === "eip155:84532") {
+    check(Boolean(localEnv("BUYER_PRIVATE_KEY")), "local buyer private key", "present, not printed", "needed only when running npm.cmd run agent:real from this machine", warnings);
+    check(Boolean(localEnv("BASE_SEPOLIA_RPC_URL")), "local Base Sepolia RPC", "present", "needed only when running npm.cmd run agent:real from this machine", warnings);
+  } else if (network === "eip155:8453") {
+    pass("mainnet buyer safety", "use a separately reviewed tiny-funded buyer path for the first real payment");
+  }
 
   console.log("\nResult:");
   if (failures.length > 0) {
@@ -147,12 +156,16 @@ async function run() {
   }
 
   if (paymentMode === "facilitator" && warnings.length === 0) {
-    console.log("Real settlement looks enabled and ready for a buyer-agent test.");
+    console.log(network === "eip155:8453"
+      ? "Mainnet settlement looks enabled. Proceed only with the controlled first-payment checklist."
+      : "Real settlement looks enabled and ready for a buyer-agent test.");
     return;
   }
 
   if (paymentMode === "facilitator") {
-    console.log("Facilitator mode is enabled, but review the warnings before sending real testnet payments.");
+    console.log(network === "eip155:8453"
+      ? "Mainnet facilitator mode is enabled, but review the warnings before the first controlled payment."
+      : "Facilitator mode is enabled, but review the warnings before sending real testnet payments.");
     return;
   }
 

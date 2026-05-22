@@ -478,6 +478,12 @@ function facilitatorAssetRequirements(requirements) {
 
 function officialPaymentRequired(req, requirements, error = "Payment required") {
   const origin = publicOrigin(req);
+  const environmentTag = paymentProvider.mode === "facilitator" && requirements.network === "eip155:8453"
+    ? "mainnet"
+    : requirements.network === "eip155:84532"
+      ? "testnet"
+      : paymentProvider.mode;
+
   return {
     x402Version: 2,
     error,
@@ -486,7 +492,7 @@ function officialPaymentRequired(req, requirements, error = "Payment required") 
       description: requirements.description,
       mimeType: requirements.mimeType,
       serviceName: API_NAME,
-      tags: ["leads", "agents", "x402", "sandbox"]
+      tags: ["leads", "agents", "x402", environmentTag]
     },
     accepts: [officialPaymentRequirements(requirements)]
   };
