@@ -23,6 +23,8 @@ manual LeadNestAI handoff only
 
 The live endpoint has been checked for a real Base mainnet `402 Payment Required` challenge. The first controlled mainnet paid unlock is still a separate proof step.
 
+The paid challenge declares x402 Bazaar discovery metadata for the same one resource: a machine-payable lead intelligence pack for service-business sales automation.
+
 ## What It Does
 
 1. Buyer or agent discovers `/.well-known/x402.json`.

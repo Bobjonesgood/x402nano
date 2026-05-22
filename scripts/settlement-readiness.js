@@ -59,11 +59,13 @@ async function run() {
   let health;
   let manifest;
   let pricing;
+  let paymentChallenge;
 
   try {
     health = await fetchJson("/api/health");
     manifest = await fetchJson("/.well-known/x402.json");
     pricing = await fetchJson("/api/pricing");
+    paymentChallenge = await fetchJson("/api/lead-intelligence/premium-pack");
   } catch (error) {
     fail("target reachable", error.message);
     process.exitCode = 1;
@@ -101,6 +103,7 @@ async function run() {
   const network = pricing.body.network ?? x402.supportedNetworks?.[0];
   const asset = pricing.body.asset ?? x402.supportedAssets?.[0];
   const product = manifest.body.product ?? pricing.body.product ?? health.body.product ?? {};
+  const bazaar = paymentChallenge.body.x402?.extensions?.bazaar;
 
   check(paymentMode === "sandbox" || paymentMode === "facilitator", "payment mode", paymentMode, `unexpected mode ${paymentMode ?? "missing"}`, warnings);
   check(settlement === "sandbox-simulated" || settlement === "facilitator-onchain", "settlement provider", settlement, `unexpected settlement ${settlement ?? "missing"}`, warnings);
@@ -110,6 +113,14 @@ async function run() {
   check(supportedNetwork, "network", networkLabel, `expected Base Sepolia eip155:84532 or Base mainnet eip155:8453, got ${network ?? "missing"}`, warnings);
   check(asset === "USDC", "asset", "USDC configured", `expected USDC, got ${asset ?? "missing"}`, warnings);
   check(x402.paymentHeader === "X-PAYMENT", "retry contract", "X-PAYMENT", `unexpected payment header ${x402.paymentHeader ?? "missing"}`, warnings);
+  check(paymentChallenge.response.status === 402, "paid resource challenge", "402 Payment Required", `expected 402, got HTTP ${paymentChallenge.response.status}`, warnings);
+  check(
+    bazaar?.info?.input?.method === "GET" && Boolean(bazaar?.info?.output?.example) && Boolean(bazaar?.schema),
+    "Bazaar discovery",
+    "GET metadata, output example, and schema declared",
+    "paid challenge should expose x402.extensions.bazaar discovery metadata",
+    warnings
+  );
   if (network === "eip155:8453") {
     check(product.mainnetReady === true, "mainnet product", product.mode ?? "production", product.reason ?? "configure LEAD_PACK_MODE=production and PREMIUM_LEAD_PACK_JSON", warnings);
   }

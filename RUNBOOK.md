@@ -39,8 +39,28 @@ After Render redeploys:
 
 1. Confirm `/api/version` shows the expected Git commit.
 2. Run `npm.cmd run settlement:check`.
-3. Confirm unpaid `GET /api/lead-intelligence/premium-pack` returns `402`, not `503`.
-4. Confirm product status still reports the reviewed production pack.
+3. Confirm the readiness output says `Bazaar discovery` is declared.
+4. Confirm unpaid `GET /api/lead-intelligence/premium-pack` returns `402`, not `503`.
+5. Confirm product status still reports the reviewed production pack.
+
+## Bazaar Readiness
+
+`npm.cmd run settlement:check` checks that the paid challenge exposes:
+
+```txt
+x402.extensions.bazaar
+GET method metadata
+output example
+output schema
+```
+
+That metadata keeps discovery narrow around the existing paid lead pack:
+
+```txt
+machine-payable lead intelligence pack for service-business sales automation
+```
+
+Catalog appearance still depends on the Bazaar/facilitator discovery process and a successfully settled paid resource.
 
 ## Local Verification
 

@@ -66,6 +66,21 @@ With valid `X-PAYMENT`, returns:
 - receipt
 - premium lead intelligence records
 
+The x402 v2 payment challenge declares Bazaar discovery metadata on the paid route:
+
+```txt
+GET method metadata
+semantic resource description
+output example
+output schema
+```
+
+The Bazaar description stays narrow:
+
+```txt
+machine-payable lead intelligence pack for service-business sales automation
+```
+
 The built-in pack is a demo pack. Base mainnet paid access is blocked until the seller host sets:
 
 ```txt

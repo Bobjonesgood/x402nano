@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { encodePaymentRequiredHeader, encodePaymentResponseHeader } from "@x402/core/http";
 import { DEFAULT_STABLECOINS } from "@x402/evm";
+import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { buildLeadHandoffPayload, leadNestAIConfig, leadNestAIReadiness, submitLeadToLeadNestAI } from "./leadnestai-client.js";
 import { createFacilitatorProvider, createSandboxProvider } from "./payment-providers.js";
 
@@ -275,6 +276,49 @@ const leadSchema = {
   }
 };
 
+const bazaarLeadPackOutputExample = {
+  status: "unlocked",
+  receipt: {
+    id: "receipt-id-after-payment",
+    payer: "external-x402-client",
+    seller: "0xSellerWallet",
+    amount: PRICE_USDC,
+    asset: ASSET,
+    network: NETWORK,
+    settledAt: "2026-05-22T00:00:00.000Z"
+  },
+  data: [
+    {
+      id: "reviewed-public-fit-signal",
+      businessName: "Example Home Services Co.",
+      industry: "Service business",
+      location: "Example City, ST",
+      estimatedJobValue: "Qualify project value before sale.",
+      buyingIntent: "Public fit signal from reviewed source evidence.",
+      painPoints: ["lead follow-up speed", "estimate intake consistency"],
+      recommendedOpener: "Are new service inquiries followed up fast enough when your team is busy?",
+      confidenceScore: 84,
+      sourceType: "official business website",
+      sourceUrls: ["https://example.com/"],
+      sourceEvidence: ["Reviewed public evidence supporting the fit signal."],
+      reviewedAt: "2026-05-22",
+      contactPolicy: "Use public business contact routes only."
+    }
+  ]
+};
+
+const bazaarLeadPackDiscovery = declareDiscoveryExtension({
+  method: "GET",
+  inputSchema: {
+    properties: {},
+    additionalProperties: false
+  },
+  output: {
+    example: bazaarLeadPackOutputExample,
+    schema: leadSchema
+  }
+});
+
 function json(res, statusCode, body, extraHeaders = {}) {
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
@@ -489,12 +533,13 @@ function officialPaymentRequired(req, requirements, error = "Payment required") 
     error,
     resource: {
       url: `${origin}${requirements.resource}`,
-      description: requirements.description,
+      description: "Machine-payable lead intelligence pack for service-business sales automation. Reviewed public-source fit signals unlock after verified x402 payment.",
       mimeType: requirements.mimeType,
       serviceName: API_NAME,
-      tags: ["leads", "agents", "x402", environmentTag]
+      tags: ["leads", "agents", "x402", "lead-intelligence", "service-business", environmentTag]
     },
-    accepts: [officialPaymentRequirements(requirements)]
+    accepts: [officialPaymentRequirements(requirements)],
+    extensions: bazaarLeadPackDiscovery
   };
 }
 
