@@ -73,6 +73,15 @@ LEAD_PACK_MODE=production
 PREMIUM_LEAD_PACK_JSON=<non-demo paid lead intelligence records>
 ```
 
+Production records must include reviewed source metadata:
+
+```txt
+sourceType
+sourceUrls
+sourceEvidence
+reviewedAt
+```
+
 Example record fields:
 
 ```txt
@@ -86,6 +95,10 @@ painPoints
 recommendedOpener
 confidenceScore
 sourceType
+sourceUrls
+sourceEvidence
+reviewedAt
+contactPolicy
 lastUpdated
 ```
 

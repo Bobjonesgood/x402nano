@@ -274,3 +274,8 @@ PREMIUM_LEAD_PACK_JSON=[...]
 ```
 
 See [REAL_X402_SETUP.md](REAL_X402_SETUP.md).
+
+For the first paid pack data boundary and controlled mainnet switch, see:
+
+- [PRODUCTION_LEAD_PACK.md](PRODUCTION_LEAD_PACK.md)
+- [MAINNET_LAUNCH_CHECKLIST.md](MAINNET_LAUNCH_CHECKLIST.md)

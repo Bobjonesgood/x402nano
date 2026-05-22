@@ -1,0 +1,77 @@
+[
+  {
+    "id": "prod_public_20260522_arrowhead_roofing",
+    "businessName": "Arrowhead Roofing",
+    "industry": "Roofing and storm restoration",
+    "location": "Tulsa, OK",
+    "estimatedJobValue": "High-ticket roofing and storm-restoration work; qualify exact deal value before sale.",
+    "buyingIntent": "Public fit signal: official site promotes online roof-inspection scheduling and storm-damage response.",
+    "painPoints": [
+      "inspection request follow-up speed",
+      "storm-response lead triage",
+      "estimate-to-appointment handoff"
+    ],
+    "recommendedOpener": "I noticed you already invite online roof inspection requests and storm-damage calls. Are you satisfied with how quickly new inspection leads are routed and followed up?",
+    "confidenceScore": 86,
+    "sourceType": "official business website",
+    "sourceUrls": [
+      "https://www.arrowheadroofing.com/"
+    ],
+    "sourceEvidence": [
+      "Official site lists free roof inspection scheduling online.",
+      "Official site lists Tulsa roof repair, roof replacement, and 24/7 storm-damage response."
+    ],
+    "reviewedAt": "2026-05-22",
+    "contactPolicy": "Use public business contact routes only. This record shows fit evidence, not a confirmed buying decision."
+  },
+  {
+    "id": "prod_public_20260522_walkers_painting",
+    "businessName": "Walkers Painting Inc.",
+    "industry": "Residential and light commercial painting",
+    "location": "Knoxville, TN",
+    "estimatedJobValue": "Painting and surface-care estimate flow; qualify project value and service mix before sale.",
+    "buyingIntent": "Public fit signal: official site promotes free estimates, project booking, and a quick-message intake form.",
+    "painPoints": [
+      "new estimate intake consistency",
+      "follow-up across call text email and form requests",
+      "keeping booked projects moving after first inquiry"
+    ],
+    "recommendedOpener": "I saw that you accept estimate requests by call, text, email, and your site form. Would a cleaner follow-up path for new painting inquiries help you keep more estimate requests from going quiet?",
+    "confidenceScore": 84,
+    "sourceType": "official business website",
+    "sourceUrls": [
+      "https://www.walkerspainting.com/"
+    ],
+    "sourceEvidence": [
+      "Official site promotes free estimates and project booking for Knoxville and surrounding areas.",
+      "Official site exposes multiple intake routes including call, text, email, and a quick-message form."
+    ],
+    "reviewedAt": "2026-05-22",
+    "contactPolicy": "Use public business contact routes only. This record shows fit evidence, not a confirmed buying decision."
+  },
+  {
+    "id": "prod_public_20260522_squeaky_clean",
+    "businessName": "Squeaky Clean",
+    "industry": "Pressure washing and exterior cleaning",
+    "location": "Savannah, GA",
+    "estimatedJobValue": "Residential and commercial exterior-cleaning work; qualify job size and repeat-service value before sale.",
+    "buyingIntent": "Public fit signal: official site promotes residential and commercial services and invites quote requests for exterior commercial cleanup.",
+    "painPoints": [
+      "quote request response time",
+      "commercial and residential lead routing",
+      "repeat-service follow-up after exterior cleaning inquiries"
+    ],
+    "recommendedOpener": "I noticed you invite quote requests for exterior cleanup and serve both home and business jobs. Are new quote inquiries already followed up fast enough when your crews are busy?",
+    "confidenceScore": 82,
+    "sourceType": "official business website",
+    "sourceUrls": [
+      "https://www.squeakycleanga.com/"
+    ],
+    "sourceEvidence": [
+      "Official site lists residential and commercial pressure-washing services in Savannah.",
+      "Official site invites visitors to request a quote for exterior commercial property cleanup."
+    ],
+    "reviewedAt": "2026-05-22",
+    "contactPolicy": "Use public business contact routes only. This record shows fit evidence, not a confirmed buying decision."
+  }
+]

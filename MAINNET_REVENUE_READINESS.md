@@ -52,6 +52,8 @@ Do not charge for demo-only or simulated lead records as if they are live custom
 
 The seller server enforces this rule for Base mainnet. It returns `503` instead of a payment challenge when mainnet facilitator mode is on but the paid resource still uses the built-in demo pack.
 
+Use [PRODUCTION_LEAD_PACK.md](PRODUCTION_LEAD_PACK.md) and [MAINNET_LAUNCH_CHECKLIST.md](MAINNET_LAUNCH_CHECKLIST.md) for the reviewed first-pack format and controlled live switch.
+
 ### 2. Use The Production Facilitator
 
 Use the CDP facilitator for production/mainnet:
@@ -136,15 +138,7 @@ Sandbox demo is healthy. Real settlement is intentionally not enabled yet.
 
 ## Immediate Next Task
 
-Prepare CDP production facilitator authentication.
-
-That means:
-
-1. Create or confirm the CDP project.
-2. Generate CDP API credentials for x402 facilitator access.
-3. Set `CDP_API_KEY_ID` and `CDP_API_KEY_SECRET` as hosting secrets for CDP facilitator mode.
-4. Test CDP facilitator first on Base Sepolia if possible.
-5. Only then plan the Base mainnet switch.
+Review the first production lead pack and complete the mainnet launch checklist.
 
 ## Honest Claim Right Now
 
@@ -155,6 +149,5 @@ The project has proven:
 
 The project has not yet proven:
 
-- CDP production facilitator auth
 - Base mainnet paid unlock
 - commercial demand for the paid lead intelligence product

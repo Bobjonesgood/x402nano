@@ -88,6 +88,14 @@ const requiredLeadPackFields = [
   "confidenceScore"
 ];
 
+const requiredProductionLeadPackFields = [
+  ...requiredLeadPackFields,
+  "sourceType",
+  "sourceUrls",
+  "sourceEvidence",
+  "reviewedAt"
+];
+
 function parseProductionLeadPack(value) {
   if (!value) return { records: [], error: "PREMIUM_LEAD_PACK_JSON is not configured." };
 
@@ -100,11 +108,16 @@ function parseProductionLeadPack(value) {
     const invalidRecord = records.find(record =>
       !record ||
       typeof record !== "object" ||
-      requiredLeadPackFields.some(field => field === "painPoints" ? !Array.isArray(record[field]) || record[field].length === 0 : record[field] === undefined || record[field] === "")
+      requiredProductionLeadPackFields.some(field => {
+        if (field === "painPoints" || field === "sourceUrls" || field === "sourceEvidence") {
+          return !Array.isArray(record[field]) || record[field].length === 0;
+        }
+        return record[field] === undefined || record[field] === "";
+      })
     );
 
     if (invalidRecord) {
-      return { records: [], error: "PREMIUM_LEAD_PACK_JSON is missing required lead intelligence fields." };
+      return { records: [], error: "PREMIUM_LEAD_PACK_JSON is missing required lead intelligence fields or production source evidence." };
     }
 
     return { records, error: "" };
@@ -245,6 +258,16 @@ const leadSchema = {
           recommendedOpener: { type: "string" },
           confidenceScore: { type: "number", minimum: 0, maximum: 100 },
           sourceType: { type: "string" },
+          sourceUrls: {
+            type: "array",
+            items: { type: "string" }
+          },
+          sourceEvidence: {
+            type: "array",
+            items: { type: "string" }
+          },
+          reviewedAt: { type: "string" },
+          contactPolicy: { type: "string" },
           lastUpdated: { type: "string" }
         }
       }
