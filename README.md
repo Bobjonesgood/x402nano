@@ -263,9 +263,11 @@ Switch to facilitator mode after the public sandbox is stable:
 
 ```txt
 X402_PAYMENT_MODE=facilitator
-X402_FACILITATOR_URL=https://your-facilitator.example
+X402_FACILITATOR_URL=https://api.cdp.coinbase.com/platform/v2/x402
+CDP_API_KEY_ID=...
+CDP_API_KEY_SECRET=...
 SELLER_ADDRESS=0xYourSellerWallet
-X402_NETWORK=eip155:84532
+X402_NETWORK=eip155:8453
 X402_ASSET=USDC
 ```
 

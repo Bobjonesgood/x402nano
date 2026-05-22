@@ -80,6 +80,8 @@ X402_NETWORK=eip155:8453
 X402_ASSET=USDC
 PRICE_USDC=<approved launch price>
 SELLER_ADDRESS=<reviewed Base mainnet receiving wallet>
+CDP_API_KEY_ID=<hosting secret>
+CDP_API_KEY_SECRET=<hosting secret>
 ```
 
 Use `SELLER_ADDRESS` or `PARTNER_SELLER_ADDRESS` consistently. Do not keep two competing seller addresses.
@@ -136,7 +138,7 @@ That means:
 
 1. Create or confirm the CDP project.
 2. Generate CDP API credentials for x402 facilitator access.
-3. Add the production auth adapter in the seller server.
+3. Set `CDP_API_KEY_ID` and `CDP_API_KEY_SECRET` as hosting secrets for CDP facilitator mode.
 4. Test CDP facilitator first on Base Sepolia if possible.
 5. Only then plan the Base mainnet switch.
 

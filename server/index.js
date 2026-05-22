@@ -132,7 +132,9 @@ const paymentProvider =
   PAYMENT_MODE === "facilitator"
     ? createFacilitatorProvider({
         facilitatorUrl: process.env.X402_FACILITATOR_URL,
-        facilitatorApiKey: process.env.X402_FACILITATOR_API_KEY
+        facilitatorApiKey: process.env.X402_FACILITATOR_API_KEY,
+        cdpApiKeyId: process.env.CDP_API_KEY_ID,
+        cdpApiKeySecret: process.env.CDP_API_KEY_SECRET
       })
     : createSandboxProvider({
         facilitatorSecret: FACILITATOR_SECRET,

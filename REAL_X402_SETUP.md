@@ -94,6 +94,7 @@ After testnet validation:
 - Set `SELLER_ADDRESS` to your real receiving wallet.
 - Use the CDP production facilitator URL: `https://api.cdp.coinbase.com/platform/v2/x402`.
 - Add CDP facilitator authentication support before switching Render to mainnet mode.
+- Store `CDP_API_KEY_ID` and `CDP_API_KEY_SECRET` as hosting secrets for the CDP facilitator JWT auth path.
 - Keep the same `402` challenge and `X-PAYMENT` retry contract.
 
 See `MAINNET_REVENUE_READINESS.md` before turning on a real-money endpoint.

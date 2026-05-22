@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { generateJwt } from "@coinbase/cdp-sdk/auth";
 import { verifyMessage } from "viem";
 
 export function createSandboxProvider({ facilitatorSecret, canonicalPayment, walletPaymentMessage }) {
@@ -75,8 +76,28 @@ export function createSandboxProvider({ facilitatorSecret, canonicalPayment, wal
   };
 }
 
-export function createFacilitatorProvider({ facilitatorUrl, facilitatorApiKey }) {
+export function createFacilitatorProvider({ facilitatorUrl, facilitatorApiKey, cdpApiKeyId, cdpApiKeySecret }) {
   const baseUrl = facilitatorUrl?.replace(/\/$/, "");
+  const cdpAuthConfigured = Boolean(cdpApiKeyId && cdpApiKeySecret);
+
+  async function authHeaders(path) {
+    if (!baseUrl) return {};
+
+    if (cdpAuthConfigured) {
+      const facilitator = new URL(`${baseUrl}${path}`);
+      const token = await generateJwt({
+        apiKeyId: cdpApiKeyId,
+        apiKeySecret: cdpApiKeySecret,
+        requestMethod: "POST",
+        requestHost: facilitator.host,
+        requestPath: facilitator.pathname
+      });
+
+      return { Authorization: `Bearer ${token}` };
+    }
+
+    return facilitatorApiKey ? { Authorization: `Bearer ${facilitatorApiKey}` } : {};
+  }
 
   async function facilitatorPost(path, body) {
     if (!baseUrl) {
@@ -90,7 +111,7 @@ export function createFacilitatorProvider({ facilitatorUrl, facilitatorApiKey })
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(facilitatorApiKey ? { Authorization: `Bearer ${facilitatorApiKey}` } : {})
+        ...(await authHeaders(path))
       },
       body: JSON.stringify(body)
     });
@@ -122,6 +143,7 @@ export function createFacilitatorProvider({ facilitatorUrl, facilitatorApiKey })
         facilitatorUrl: baseUrl ?? null,
         verifyEndpoint: baseUrl ? `${baseUrl}/verify` : null,
         settleEndpoint: baseUrl ? `${baseUrl}/settle` : null,
+        authMode: cdpAuthConfigured ? "cdp-jwt" : facilitatorApiKey ? "bearer-token" : "none",
         notes: "Client must provide a real x402 payment payload in X-PAYMENT. The server delegates verification and settlement to the facilitator."
       };
     },

@@ -118,6 +118,9 @@ async function run() {
   if (paymentMode === "facilitator") {
     check(!links.sandboxSigner, "sandbox signer", "disabled in facilitator mode", "sandbox signer should be null in facilitator mode", warnings);
     check(Boolean(provider.facilitatorUrl), "facilitator URL", provider.facilitatorUrl, "set X402_FACILITATOR_URL in Render", warnings);
+    if (provider.facilitatorUrl?.includes("api.cdp.coinbase.com")) {
+      check(provider.authMode === "cdp-jwt", "CDP facilitator auth", "CDP JWT configured", "set CDP_API_KEY_ID and CDP_API_KEY_SECRET in Render", warnings);
+    }
     if (sellerWallet.isValid === true || EVM_ADDRESS_PATTERN.test(sellerAddress ?? "")) {
       pass("real settlement status", "server appears ready for npm.cmd run agent:real");
     } else {

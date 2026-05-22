@@ -24,3 +24,7 @@ services:
         value: x402nano
       - key: LEADNESTAI_INGEST_SECRET
         sync: false
+      - key: CDP_API_KEY_ID
+        sync: false
+      - key: CDP_API_KEY_SECRET
+        sync: false
