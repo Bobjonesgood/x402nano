@@ -13,7 +13,7 @@ flowchart LR
   UI["React Demo UI"]
   Agent["Buyer Agent / Browser Wallet"]
   API["LeadNestAI Seller API"]
-  Provider["Sandbox Payment Provider"]
+  Provider["Payment Provider"]
   Leads["Premium Lead Intelligence Pack"]
   Handoff["Manual LeadNestAI Handoff"]
   LeadNest["LeadNestAI Ingest API"]
@@ -127,7 +127,7 @@ This is a structure for future usage metering, analytics, billing records, and o
 
 ## LeadNestAI Handoff Flow
 
-The first integration is intentionally manual and sandbox-only:
+The first integration is intentionally manual and selected-lead-only:
 
 1. x402 unlocks the premium lead pack.
 2. The user selects one lead and clicks `Send to LeadNestAI`.
@@ -151,7 +151,7 @@ sequenceDiagram
   X402-->>UI: handoff result
 ```
 
-This bridge does not enable real settlement and does not trigger automatic outreach yet.
+This bridge does not trigger automatic outreach yet.
 
 ## Settlement Modes
 
@@ -168,15 +168,15 @@ Sandbox mode keeps the demo safe:
 - browser wallet signs an authorization message
 - receipt proves the access flow
 
-### Future Facilitator Mode
+### Facilitator Mode
 
 ```txt
 X402_PAYMENT_MODE=facilitator
 ```
 
-Facilitator mode will disable the sandbox signer and expect a real x402 payment payload in `X-PAYMENT`.
+Facilitator mode disables the sandbox signer and expects a real x402 payment payload in `X-PAYMENT`.
 
-Do not enable facilitator mode until `REAL_SETTLEMENT_DRY_RUN.md` is followed.
+The live mainnet seller is currently configured in facilitator mode with CDP auth, Base mainnet USDC requirements, and a reviewed production lead pack. Follow `MAINNET_LAUNCH_CHECKLIST.md` for the first controlled paid unlock and rollback path.
 
 ## Current Product Shape
 

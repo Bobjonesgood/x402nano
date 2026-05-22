@@ -1,129 +1,57 @@
 # Trust Statement
 
-This project is built around a simple standard:
+This project follows one rule:
 
 ```txt
 Real proof. Clear boundaries. No fake claims.
 ```
 
-## What This Demo Proves
+## Proven
 
-The LeadNestAI sandbox proves that a lead intelligence API can expose a machine-payable access pattern:
+- The x402 seller publishes discovery and price metadata.
+- Unpaid protected access returns `402 Payment Required`.
+- The seller accepts the `X-PAYMENT` retry contract and returns receipts after verification.
+- Base Sepolia facilitator settlement was proven with test USDC.
+- A live x402 unlock can hand a selected record into LeadNestAI with dedupe and no automatic outreach.
+- The live mainnet seller now exposes a reviewed production lead pack and a Base mainnet payment challenge.
 
-- publish a discovery manifest at `/.well-known/x402.json`
-- reject unpaid access with `402 Payment Required`
-- return payment requirements to the buyer
-- accept a payment payload through `X-PAYMENT`
-- unlock protected lead intelligence after verification
-- return a receipt
-- provide scripts that reproduce the flow from the command line
+## Not Proven Yet
 
-That is the core infrastructure proof.
+- A customer has paid for the Base mainnet pack.
+- A controlled self-test mainnet paid unlock has completed.
+- Market demand, retention, refunds, compliance posture, and scaling economics are solved.
 
-## What This Demo Does Not Claim
+## Product Boundary
 
-This public deployment does not claim that real funds are currently moving.
-
-It does not claim mainnet settlement.
-
-It does not claim production payment compliance.
-
-It does not claim that the demo lead data is a real commercial dataset.
-
-Base mainnet paid access is blocked in code until the paid resource is configured with a production lead pack instead of the built-in demo records.
-
-Production lead packs also require reviewed source metadata so a mainnet switch cannot be made with an unsourced payload labeled as paid lead intelligence.
-
-It does not ask anyone to trust a hidden process. The API exposes its discovery, health, version, readiness, and proof files.
-
-## What Is Sandboxed
-
-The current public deployment is intentionally running:
+The built-in demo pack cannot be charged on Base mainnet. Mainnet product mode requires production records with reviewed source metadata:
 
 ```txt
-payment mode: sandbox
-settlement: sandbox-simulated
+sourceType
+sourceUrls
+sourceEvidence
+reviewedAt
 ```
 
-In sandbox mode:
+The current starter pack uses public official-business-site fit signals. It does not claim that listed businesses have agreed to buy anything.
 
-- no real funds move
-- `/api/payments/sign` creates a simulated payment payload
-- browser wallet mode signs an authorization message
-- receipts prove the unlock flow, not final onchain settlement
+## Safety Boundary
 
-This keeps the demo safe while preserving the same discovery, `402`, `X-PAYMENT`, and receipt shape needed for real settlement.
+- Buyer private keys stay local.
+- Render stores seller-side configuration only.
+- LeadNestAI handoff stays manual and selected-lead-only.
+- Automatic outreach remains outside this first paid-endpoint launch.
 
-## What Is Real
-
-These parts are real in the current public demo:
-
-- deployed API server
-- public React app
-- discovery manifest
-- protected endpoint
-- `402 Payment Required` behavior
-- `X-PAYMENT` retry path
-- receipt generation
-- autonomous buyer script
-- smoke test
-- readiness checker
-- recordable proof transcript
-- release/version endpoint
-- valid seller wallet address in metadata
-
-## How To Verify
-
-Open:
-
-```txt
-https://x402nano.onrender.com
-https://x402nano.onrender.com/.well-known/x402.json
-https://x402nano.onrender.com/api/version
-```
-
-Run:
+## Verify
 
 ```powershell
 npm.cmd run settlement:check
-$env:AGENT_API_ORIGIN="https://x402nano.onrender.com"
-npm.cmd run smoke
-npm.cmd run demo:record
 ```
 
 Read:
 
 ```txt
-proofs/latest-demo-run.md
-DEMO_REPORT.md
-RUNBOOK.md
-REAL_SETTLEMENT_DRY_RUN.md
-```
-
-## Before Real Funds
-
-Before real settlement is enabled, the project requires a controlled Base Sepolia dry run:
-
-- dedicated test wallet
-- Base Sepolia ETH for gas
-- Base Sepolia test USDC
-- facilitator URL confirmed
-- seller wallet confirmed
-- buyer private key kept local only
-- `npm.cmd run settlement:check` passes in facilitator mode
-- `npm.cmd run agent:real` unlocks protected lead intelligence with testnet funds
-
-The checklist lives in:
-
-```txt
-REAL_SETTLEMENT_DRY_RUN.md
-```
-
-## Current Position
-
-The honest status is:
-
-```txt
-Sandbox proof complete.
-Real settlement prepared, not rushed.
+MAINNET_LAUNCH_CHECKLIST.md
+PRODUCTION_LEAD_PACK.md
+BASE_SEPOLIA_REAL_SETTLEMENT_PROOF.md
+X402_TO_LEADNESTAI_LIVE_PROOF.md
 ```

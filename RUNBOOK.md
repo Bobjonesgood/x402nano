@@ -1,170 +1,97 @@
-# LeadNestAI Demo Runbook
+# LeadNestAI x402 Runbook
 
-Live demo: https://x402nano.onrender.com
-
-Use this checklist when you want to operate, verify, or show the demo without guessing.
-
-## 1. Check Live Health
-
-```powershell
-npm.cmd run settlement:check
-```
-
-Expected result:
-
-- health is `sandbox / sandbox-simulated`
-- discovery manifest loads
-- price is `0.05 USDC`
-- network is `eip155:84532`
-- seller wallet is a valid `0x...` address
-- real settlement says it is not enabled yet
-
-This is the quickest check that the public demo is still in the right state.
-
-## 2. Verify Settlement Mode
-
-```powershell
-npm.cmd run settlement:check
-```
-
-Look for:
-
-```txt
-payment mode - sandbox
-settlement provider - sandbox-simulated
-real settlement - not enabled yet
-```
-
-That is the correct current state. The public demo should stay in sandbox mode until the real facilitator path is tested deliberately.
-
-## 3. Run The Live Smoke Test
-
-```powershell
-$env:AGENT_API_ORIGIN="https://x402nano.onrender.com"
-npm.cmd run smoke
-```
-
-Expected result:
-
-```txt
-Smoke test passed.
-```
-
-This proves:
-
-- `/.well-known/x402.json` works
-- `/api/pricing` works
-- `/api/schema` works
-- `/api/lead-intelligence/premium-pack` returns `402` before payment
-- sandbox signing works
-- retry with `X-PAYMENT` unlocks lead intelligence
-
-## 4. Run The Buyer Agent
-
-```powershell
-$env:AGENT_API_ORIGIN="https://x402nano.onrender.com"
-npm.cmd run agent:buyer
-```
-
-Expected flow:
-
-```txt
-1. Discovering seller API
-2. Requesting premium lead intelligence
-3. Paying automatically
-4. Retrying with X-PAYMENT
-5. Protected data received
-```
-
-This is the best terminal demo for technical people. It shows the project is not just a website.
-
-## 5. Record A Fresh Proof
-
-```powershell
-npm.cmd run demo:record
-```
-
-This writes:
-
-```txt
-proofs/latest-demo-run.md
-proofs/<timestamp>-demo-run.md
-```
-
-Use this before sharing the project so `proofs/latest-demo-run.md` contains a fresh receipt from the live deployed app.
-
-## 6. What To Do If Render Redeploys
-
-After Render finishes a deploy:
-
-```powershell
-npm.cmd run settlement:check
-$env:AGENT_API_ORIGIN="https://x402nano.onrender.com"
-npm.cmd run smoke
-npm.cmd run demo:record
-```
-
-Then refresh:
+Live seller:
 
 ```txt
 https://x402nano.onrender.com
 ```
 
-Check the app shows:
+## Daily Check
 
-- settlement readiness panel
-- `sandbox`
-- valid seller wallet
-- real settlement `off`
-- proof/report section near the bottom
+From this project folder:
 
-## 7. What Not To Touch Yet
-
-Do not switch these in Render yet unless you are intentionally doing a real settlement dry run:
-
-```txt
-X402_PAYMENT_MODE=facilitator
-X402_FACILITATOR_URL=...
-CDP_API_KEY_ID=...
-CDP_API_KEY_SECRET=...
+```powershell
+npm.cmd run settlement:check
 ```
 
-Do not paste a mainnet private key into local env or Render.
+Current live expectations:
 
-Do not use a personal wallet/private key for buyer-agent testing. Use a dedicated Base Sepolia test wallet only.
+```txt
+payment mode: facilitator
+settlement: facilitator-onchain
+network: eip155:8453
+asset: USDC
+product: production
+CDP facilitator auth: configured
+sandbox signer: disabled
+```
 
-Do not change `X402_NETWORK` to Base mainnet until Base Sepolia facilitator testing has passed.
+Then open:
 
-## 8. Safe Current Render Settings
+```txt
+https://x402nano.onrender.com/api/version
+https://x402nano.onrender.com/.well-known/x402.json
+```
 
-These are the safe public-demo settings:
+## Deploy Check
+
+After Render redeploys:
+
+1. Confirm `/api/version` shows the expected Git commit.
+2. Run `npm.cmd run settlement:check`.
+3. Confirm unpaid `GET /api/lead-intelligence/premium-pack` returns `402`, not `503`.
+4. Confirm product status still reports the reviewed production pack.
+
+## Local Verification
+
+```powershell
+npm.cmd run build
+$env:AGENT_API_ORIGIN="https://x402nano.onrender.com"
+npm.cmd run smoke
+npm.cmd run leadnestai:test
+```
+
+The sandbox smoke path is still useful for API shape checks. The LeadNestAI handoff remains manual and selected-lead-only.
+
+## Paid Endpoint Operation
+
+Protected resource:
+
+```txt
+GET /api/lead-intelligence/premium-pack
+```
+
+Mainnet buyer preflight:
+
+```powershell
+npm.cmd run agent:mainnet
+```
+
+Fresh local buyer wallet helper:
+
+```powershell
+npm.cmd run wallet:mainnet:create
+```
+
+Keep buyer private keys local. Do not put buyer secrets in Render or chat.
+
+## Files To Read
+
+```txt
+MAINNET_LAUNCH_CHECKLIST.md
+PRODUCTION_LEAD_PACK.md
+TRUST.md
+ARCHITECTURE.md
+```
+
+## Rollback
+
+If the paid product data, facilitator path, or seller-wallet review is wrong, set Render back to:
 
 ```txt
 X402_PAYMENT_MODE=sandbox
-PARTNER_SELLER_ADDRESS=0xYourSellerWallet
+LEAD_PACK_MODE=demo
 X402_NETWORK=eip155:84532
-X402_ASSET=USDC
-PRICE_USDC=0.05
 ```
 
-`SELLER_ADDRESS` also works, but `PARTNER_SELLER_ADDRESS` is accepted as a fallback when the hosting environment cannot reuse the same variable name.
-
-## 9. Files To Share
-
-Use these when showing the project:
-
-```txt
-https://x402nano.onrender.com
-README.md
-DEMO_REPORT.md
-proofs/latest-demo-run.md
-REAL_X402_SETUP.md
-```
-
-## 10. Next Bigger Step
-
-Before touching facilitator mode, follow the real settlement dry-run checklist:
-
-```txt
-REAL_SETTLEMENT_DRY_RUN.md
-```
+Redeploy and run `npm.cmd run settlement:check` again.

@@ -1,290 +1,106 @@
-# LeadNestAI Machine-Payable API Demo
+# LeadNestAI Machine-Payable Lead Intelligence
 
-Machine-payable lead intelligence infrastructure.
+LeadNestAI is the product story. x402 is the payment-aware API layer underneath it.
 
-LeadNestAI is the commercial story: pay to unlock structured lead intelligence. The x402-style flow is the payment infrastructure underneath it.
-
-Live demo:
+Live seller:
 
 ```txt
 https://x402nano.onrender.com
+GET /api/lead-intelligence/premium-pack
 ```
 
-Fastest proof:
+## Current Status
 
-```powershell
-npm.cmd run settlement:check
-$env:AGENT_API_ORIGIN="https://x402nano.onrender.com"
-npm.cmd run smoke
-npm.cmd run demo:record
-```
-
-The app demonstrates:
-
-- agent discovery through `/.well-known/x402.json`
-- protected API access through `402 Payment Required`
-- automatic payment handoff through `X-PAYMENT`
-- sandbox settlement today
-- facilitator settlement boundary for real x402 wiring
-- LeadNestAI premium lead intelligence unlocks
-
-Current honest status:
+The live seller is configured for:
 
 ```txt
-sandbox settlement
-no real funds
-real settlement prepared, not enabled
+Base mainnet payment challenge
+USDC price: 0.05
+CDP facilitator settlement path
+reviewed three-record production starter pack
+manual LeadNestAI handoff only
 ```
 
-Start with the project map:
+The live endpoint has been checked for a real Base mainnet `402 Payment Required` challenge. The first controlled mainnet paid unlock is still a separate proof step.
 
-```txt
-PROJECT_INDEX.md
-```
+## What It Does
 
-Release snapshot:
+1. Buyer or agent discovers `/.well-known/x402.json`.
+2. Buyer requests the paid lead pack.
+3. Seller returns `402 Payment Required`.
+4. Buyer retries with `X-PAYMENT`.
+5. Seller verifies payment and returns a receipt plus lead intelligence.
+6. A selected unlocked lead can be manually handed into LeadNestAI.
 
-```txt
-RELEASE_NOTES.md
-```
-
-Trust statement:
-
-```txt
-TRUST.md
-```
-
-Public demo kit:
-
-```txt
-PUBLIC_DEMO_KIT.md
-DEMO_RECORDING_CHECKLIST.md
-SOCIAL_DEMO_ASSETS.md
-FIRST_VIEWER_FEEDBACK.md
-FEEDBACK_ITERATION_LOG.md
-assets/screenshots/
-```
-
-Commercial architecture docs:
-
-```txt
-ARCHITECTURE.md
-PAYMENT_FLOW.md
-API_OVERVIEW.md
-```
-
-## Demo Brief
-
-This project is a public proof that APIs can become payment-aware resources for agents and wallets.
-
-### What This Proves
-
-An API can publish its price and payment rules, reject unpaid access with `402 Payment Required`, accept a payment payload on retry, and unlock LeadNestAI lead intelligence without a human-operated checkout page.
-
-### How Agents Discover The API
-
-Agents read:
-
-```txt
-/.well-known/x402.json
-```
-
-That manifest exposes the protected endpoint, price, network, asset, payment header, schema, and receipt path.
-
-### How Payment Unlock Works
-
-The buyer calls `/api/lead-intelligence/premium-pack` and receives `402`. The buyer then creates a payment payload, retries with `X-PAYMENT`, and receives a premium LeadNestAI lead intelligence pack plus a receipt.
-
-### What Is Sandbox Now
-
-The current public demo uses simulated USDC settlement and browser-wallet message signatures. No real funds move in sandbox mode. This keeps the demo safe while preserving the real x402 shape.
-
-### What Becomes Real x402 Settlement Next
-
-Switch `X402_PAYMENT_MODE` to `facilitator`, add a facilitator URL, use a funded Base Sepolia buyer wallet, and keep the same discovery, `402`, `X-PAYMENT`, and receipt flow.
-
-## Run Locally
+## Fast Checks
 
 ```powershell
 npm.cmd install
 npm.cmd run build
-npm.cmd start
-```
-
-Open:
-
-```txt
-http://127.0.0.1:4021
-```
-
-Run the autonomous buyer:
-
-```powershell
-npm.cmd run agent:buyer
-```
-
-Run the deploy smoke test:
-
-```powershell
+npm.cmd run settlement:check
+$env:AGENT_API_ORIGIN="https://x402nano.onrender.com"
 npm.cmd run smoke
-```
-
-Run the local LeadNestAI handoff integration test:
-
-```powershell
 npm.cmd run leadnestai:test
 ```
 
-This starts a mock LeadNestAI receiver, unlocks a sandbox lead pack, manually submits one selected lead, verifies duplicate handling, and confirms both x402 and LeadNestAI-style handoff logs.
-
-Check release/build metadata:
-
-```txt
-/api/version
-```
-
-Generate a shareable proof report:
+## Mainnet Buyer Preflight
 
 ```powershell
-npm.cmd run demo:report
+npm.cmd run agent:mainnet
 ```
 
-Record a markdown proof transcript:
+That command checks the live mainnet endpoint and exits before payment until a local dedicated buyer key and explicit payment acknowledgement exist.
+
+Create a fresh local-only buyer wallet when needed:
 
 ```powershell
-npm.cmd run demo:record
+npm.cmd run wallet:mainnet:create
 ```
 
-This writes `proofs/latest-demo-run.md` and a timestamped archive in `proofs/`.
+The helper writes `.env.mainnet.local`, which is ignored by Git, and prints only the public address. Do not put buyer private keys in Render or chat.
 
-Read the plain-English demo report:
+## Environment Shape
 
-```txt
-DEMO_REPORT.md
-```
-
-Operate the demo with the checklist:
-
-```txt
-RUNBOOK.md
-```
-
-Prepare for testnet settlement without flipping the switch:
-
-```txt
-REAL_SETTLEMENT_DRY_RUN.md
-```
-
-Run the real x402 buyer path after switching the server to facilitator mode:
-
-```powershell
-$env:BUYER_PRIVATE_KEY="0xYourBaseSepoliaTestPrivateKey"
-$env:BASE_SEPOLIA_RPC_URL="https://your-base-sepolia-rpc"
-npm.cmd run agent:real
-```
-
-## LeadNestAI Handoff
-
-The first bridge between the x402 unlock layer and LeadNestAI is manual, sandbox-only, and selected-lead-only.
-
-x402 side:
-
-```txt
-LEAD_HANDOFF_ENABLED=false
-LEADNESTAI_API_URL=
-LEADNESTAI_INGEST_SECRET=
-LEADNESTAI_SOURCE_ID=x402nano
-```
-
-LeadNestAI receive endpoint:
-
-```txt
-POST /api/integrations/x402/leads
-Authorization: Bearer {LEADNESTAI_INGEST_SECRET}
-```
-
-Local mock receiver:
-
-```powershell
-npm.cmd run leadnestai:mock
-```
-
-No real settlement is required for this integration.
-
-## Public Sandbox Deploy
-
-Use these environment variables first:
-
-```txt
-X402_PAYMENT_MODE=sandbox
-SELLER_ADDRESS=0xYourWallet
-X402_NETWORK=eip155:84532
-X402_ASSET=USDC
-PRICE_USDC=0.05
-```
-
-`SELLER_ADDRESS` should be your receiving wallet. `PARTNER_SELLER_ADDRESS` is also accepted as a fallback if your host already uses that name. In sandbox mode it can be a placeholder, but before real settlement it must be a valid EVM address:
-
-```txt
-0x followed by 40 hexadecimal characters
-```
-
-Build command:
-
-```txt
-npm install && npm run build
-```
-
-Start command:
-
-```txt
-npm start
-```
-
-After deploy, test:
-
-```powershell
-$env:AGENT_API_ORIGIN="https://your-public-url"
-npm.cmd run smoke
-npm.cmd run agent:buyer
-npm.cmd run demo:report
-```
-
-## Docker
-
-```powershell
-docker build -t payment-aware-sandbox .
-docker run --rm -p 4021:4021 payment-aware-sandbox
-```
-
-## Real Settlement
-
-Switch to facilitator mode after the public sandbox is stable:
+Seller-side mainnet configuration:
 
 ```txt
 X402_PAYMENT_MODE=facilitator
 X402_FACILITATOR_URL=https://api.cdp.coinbase.com/platform/v2/x402
-CDP_API_KEY_ID=...
-CDP_API_KEY_SECRET=...
-SELLER_ADDRESS=0xYourSellerWallet
+CDP_API_KEY_ID=<hosting secret>
+CDP_API_KEY_SECRET=<hosting secret>
+SELLER_ADDRESS=<reviewed Base receiving wallet>
 X402_NETWORK=eip155:8453
 X402_ASSET=USDC
+PRICE_USDC=0.05
 LEAD_PACK_MODE=production
-PREMIUM_LEAD_PACK_JSON=[...]
+PREMIUM_LEAD_PACK_JSON=<reviewed production pack>
 ```
 
-See [REAL_X402_SETUP.md](REAL_X402_SETUP.md).
+LeadNestAI manual handoff:
 
-For the first paid pack data boundary and controlled mainnet switch, see:
-
-- [PRODUCTION_LEAD_PACK.md](PRODUCTION_LEAD_PACK.md)
-- [MAINNET_LAUNCH_CHECKLIST.md](MAINNET_LAUNCH_CHECKLIST.md)
-
-Mainnet buyer preflight:
-
-```powershell
-npm.cmd run wallet:mainnet:create
-npm.cmd run agent:mainnet
+```txt
+LEAD_HANDOFF_ENABLED=true
+LEADNESTAI_API_URL=https://www.leadnestai.net
+LEADNESTAI_INGEST_SECRET=<shared secret>
+LEADNESTAI_SOURCE_ID=x402nano
 ```
 
-The wallet helper writes a fresh dedicated buyer key to ignored `.env.mainnet.local` and prints only the public address. The buyer command loads that local file when present and refuses to pay without `MAINNET_BUYER_PRIVATE_KEY` and the explicit `MAINNET_PAYMENT_ACK` local acknowledgement. The wallet setup helper uses Base's public mainnet RPC as a first-proof default; replace `BASE_MAINNET_RPC_URL` with a dedicated provider for production operations.
+## Docs Kept
+
+```txt
+RUNBOOK.md
+PROJECT_INDEX.md
+ARCHITECTURE.md
+API_OVERVIEW.md
+TRUST.md
+PRODUCTION_LEAD_PACK.md
+MAINNET_LAUNCH_CHECKLIST.md
+MAINNET_REVENUE_READINESS.md
+```
+
+Proof retained:
+
+```txt
+BASE_SEPOLIA_REAL_SETTLEMENT_PROOF.md
+X402_TO_LEADNESTAI_LIVE_PROOF.md
+```
