@@ -24,9 +24,17 @@ The buyer will discover `/.well-known/x402.json`, request `/api/lead-intelligenc
 
 ## Facilitator Mode
 
+For the first Base Sepolia dry run, use the official signup-free testnet facilitator:
+
+```txt
+https://x402.org/facilitator
+```
+
+That keeps the first real settlement proof on testnet. Use the CDP facilitator path for production/mainnet work.
+
 ```powershell
 $env:X402_PAYMENT_MODE="facilitator"
-$env:X402_FACILITATOR_URL="https://your-facilitator.example"
+$env:X402_FACILITATOR_URL="https://x402.org/facilitator"
 $env:SELLER_ADDRESS="0xYourSellerWallet"
 $env:X402_NETWORK="eip155:84532"
 $env:X402_ASSET="USDC"
@@ -39,6 +47,7 @@ In this mode:
 - `/api/payments/sign` returns `501` because signing belongs to the buyer wallet or x402 client.
 - `/api/lead-intelligence/premium-pack` still returns `402` with payment requirements.
 - The retry still uses `X-PAYMENT`.
+- Official v2 buyer SDKs may retry with `PAYMENT-SIGNATURE`; this server accepts that header for facilitator settlement too.
 - The server posts the payment payload and requirements to the facilitator `/verify` and `/settle` endpoints.
 
 For facilitator testing, prepare a real x402 payment payload with your wallet/client and pass it to the autonomous buyer:

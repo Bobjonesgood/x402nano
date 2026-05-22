@@ -4,6 +4,14 @@ This checklist is for preparing a Base Sepolia facilitator test before switching
 
 Do not use this checklist with mainnet funds. Do not use a personal wallet. Do not paste private keys into Render.
 
+For the first controlled dry run, use the official signup-free testnet facilitator:
+
+```txt
+https://x402.org/facilitator
+```
+
+It is for testnet use and supports Base Sepolia. Move to the CDP facilitator path before a production/mainnet launch.
+
 ## Goal
 
 Prove the same buyer flow with real testnet settlement:
@@ -50,7 +58,7 @@ Prepare:
 - Base Sepolia ETH for gas
 - Base Sepolia test USDC
 - Valid seller wallet address
-- Facilitator URL
+- Facilitator URL: `https://x402.org/facilitator`
 - Base Sepolia RPC URL
 
 Never use a mainnet private key. Never put `BUYER_PRIVATE_KEY` in Render.
@@ -73,7 +81,7 @@ Only when you are ready for the dry run, set these in Render:
 
 ```txt
 X402_PAYMENT_MODE=facilitator
-X402_FACILITATOR_URL=https://your-facilitator.example
+X402_FACILITATOR_URL=https://x402.org/facilitator
 PARTNER_SELLER_ADDRESS=0xYourSellerWallet
 X402_NETWORK=eip155:84532
 X402_ASSET=USDC
@@ -85,6 +93,8 @@ If the facilitator requires an API key, set:
 ```txt
 X402_FACILITATOR_API_KEY=...
 ```
+
+The first `x402.org` Base Sepolia dry run does not require `X402_FACILITATOR_API_KEY`.
 
 Do not set:
 
@@ -158,6 +168,7 @@ The dry run passes only if all are true:
 - receipt shows facilitator settlement
 - buyer wallet balance changes only by expected testnet amounts
 - no mainnet wallet or mainnet private key was used
+- LeadNestAI handoff stays separate until the paid unlock itself is proven cleanly
 
 ## Fail Criteria
 
