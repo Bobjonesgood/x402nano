@@ -66,6 +66,13 @@ With valid `X-PAYMENT`, returns:
 - receipt
 - premium lead intelligence records
 
+The built-in pack is a demo pack. Base mainnet paid access is blocked until the seller host sets:
+
+```txt
+LEAD_PACK_MODE=production
+PREMIUM_LEAD_PACK_JSON=<non-demo paid lead intelligence records>
+```
+
 Example record fields:
 
 ```txt

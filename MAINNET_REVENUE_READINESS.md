@@ -50,6 +50,8 @@ Confirm:
 
 Do not charge for demo-only or simulated lead records as if they are live customer-ready leads.
 
+The seller server enforces this rule for Base mainnet. It returns `503` instead of a payment challenge when mainnet facilitator mode is on but the paid resource still uses the built-in demo pack.
+
 ### 2. Use The Production Facilitator
 
 Use the CDP facilitator for production/mainnet:
@@ -82,6 +84,8 @@ PRICE_USDC=<approved launch price>
 SELLER_ADDRESS=<reviewed Base mainnet receiving wallet>
 CDP_API_KEY_ID=<hosting secret>
 CDP_API_KEY_SECRET=<hosting secret>
+LEAD_PACK_MODE=production
+PREMIUM_LEAD_PACK_JSON=<non-demo paid lead intelligence records>
 ```
 
 Use `SELLER_ADDRESS` or `PARTNER_SELLER_ADDRESS` consistently. Do not keep two competing seller addresses.

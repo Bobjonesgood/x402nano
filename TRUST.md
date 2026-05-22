@@ -30,6 +30,8 @@ It does not claim production payment compliance.
 
 It does not claim that the demo lead data is a real commercial dataset.
 
+Base mainnet paid access is blocked in code until the paid resource is configured with a production lead pack instead of the built-in demo records.
+
 It does not ask anyone to trust a hidden process. The API exposes its discovery, health, version, readiness, and proof files.
 
 ## What Is Sandboxed

@@ -100,13 +100,19 @@ async function run() {
   const settlement = x402.settlement ?? health.body.settlement;
   const network = pricing.body.network ?? x402.supportedNetworks?.[0];
   const asset = pricing.body.asset ?? x402.supportedAssets?.[0];
+  const product = manifest.body.product ?? pricing.body.product ?? health.body.product ?? {};
 
   check(paymentMode === "sandbox" || paymentMode === "facilitator", "payment mode", paymentMode, `unexpected mode ${paymentMode ?? "missing"}`, warnings);
   check(settlement === "sandbox-simulated" || settlement === "facilitator-onchain", "settlement provider", settlement, `unexpected settlement ${settlement ?? "missing"}`, warnings);
   check(sellerWallet.isValid === true || EVM_ADDRESS_PATTERN.test(sellerAddress ?? ""), "seller wallet", maskAddress(sellerAddress), "set SELLER_ADDRESS or PARTNER_SELLER_ADDRESS to a real 0x wallet before facilitator mode", warnings);
-  check(network === "eip155:84532", "network", "Base Sepolia configured", `expected eip155:84532 for testnet, got ${network ?? "missing"}`, warnings);
+  const supportedNetwork = network === "eip155:84532" || network === "eip155:8453";
+  const networkLabel = network === "eip155:8453" ? "Base mainnet configured" : "Base Sepolia configured";
+  check(supportedNetwork, "network", networkLabel, `expected Base Sepolia eip155:84532 or Base mainnet eip155:8453, got ${network ?? "missing"}`, warnings);
   check(asset === "USDC", "asset", "USDC configured", `expected USDC, got ${asset ?? "missing"}`, warnings);
   check(x402.paymentHeader === "X-PAYMENT", "retry contract", "X-PAYMENT", `unexpected payment header ${x402.paymentHeader ?? "missing"}`, warnings);
+  if (network === "eip155:8453") {
+    check(product.mainnetReady === true, "mainnet product", product.mode ?? "production", product.reason ?? "configure LEAD_PACK_MODE=production and PREMIUM_LEAD_PACK_JSON", warnings);
+  }
 
   if (paymentMode === "sandbox") {
     check(Boolean(links.sandboxSigner), "sandbox signer", links.sandboxSigner, "sandbox mode should expose /api/payments/sign", warnings);

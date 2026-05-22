@@ -23,6 +23,7 @@ const RELEASE_NAME = process.env.RELEASE_NAME ?? "LeadNestAI Machine-Payable Lea
 const PAYMENT_HEADER = "X-PAYMENT";
 const RESOURCE_PATH = "/api/lead-intelligence/premium-pack";
 const LEGACY_RESOURCE_PATH = "/api/premium-leads";
+const LEAD_PACK_MODE = process.env.LEAD_PACK_MODE ?? "demo";
 const PAYMENT_TTL_MS = 5 * 60 * 1000;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 90;
@@ -30,7 +31,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.resolve(__dirname, "../dist");
 const EVM_ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
 
-const premiumLeadPack = [
+const demoLeadPack = [
   {
     id: "lnai_pack_001",
     businessName: "Riverbend Roofing & Restoration",
@@ -74,6 +75,70 @@ const premiumLeadPack = [
     lastUpdated: "2026-05-17"
   }
 ];
+
+const requiredLeadPackFields = [
+  "id",
+  "businessName",
+  "industry",
+  "location",
+  "estimatedJobValue",
+  "buyingIntent",
+  "painPoints",
+  "recommendedOpener",
+  "confidenceScore"
+];
+
+function parseProductionLeadPack(value) {
+  if (!value) return { records: [], error: "PREMIUM_LEAD_PACK_JSON is not configured." };
+
+  try {
+    const records = JSON.parse(value);
+    if (!Array.isArray(records) || records.length === 0) {
+      return { records: [], error: "PREMIUM_LEAD_PACK_JSON must contain a non-empty lead record array." };
+    }
+
+    const invalidRecord = records.find(record =>
+      !record ||
+      typeof record !== "object" ||
+      requiredLeadPackFields.some(field => field === "painPoints" ? !Array.isArray(record[field]) || record[field].length === 0 : record[field] === undefined || record[field] === "")
+    );
+
+    if (invalidRecord) {
+      return { records: [], error: "PREMIUM_LEAD_PACK_JSON is missing required lead intelligence fields." };
+    }
+
+    return { records, error: "" };
+  } catch {
+    return { records: [], error: "PREMIUM_LEAD_PACK_JSON is not valid JSON." };
+  }
+}
+
+const productionLeadPack = parseProductionLeadPack(process.env.PREMIUM_LEAD_PACK_JSON);
+const premiumLeadPack = LEAD_PACK_MODE === "production" ? productionLeadPack.records : demoLeadPack;
+
+function leadPackStatus() {
+  const productionConfigured = LEAD_PACK_MODE === "production" && premiumLeadPack.length > 0 && !productionLeadPack.error;
+  const mainnetReady = NETWORK !== "eip155:8453" || productionConfigured;
+
+  return {
+    mode: LEAD_PACK_MODE === "production" ? "production" : "demo",
+    records: premiumLeadPack.length,
+    productionConfigured,
+    mainnetReady,
+    disclosure: productionConfigured
+      ? "Production lead intelligence records are configured for the paid resource."
+      : "Built-in records are demo lead intelligence. Configure a production lead pack before Base mainnet paid access.",
+    reason: productionConfigured ? null : productionLeadPack.error || "Set LEAD_PACK_MODE=production and PREMIUM_LEAD_PACK_JSON for the first real paid pack."
+  };
+}
+
+function mainnetProductBlocker() {
+  const product = leadPackStatus();
+  if (paymentProvider.mode === "facilitator" && NETWORK === "eip155:8453" && !product.mainnetReady) {
+    return product.reason;
+  }
+  return "";
+}
 
 const payments = new Map();
 const issuedRequirements = new Map();
@@ -257,6 +322,7 @@ function versionPayload() {
       amount: PRICE_USDC,
       sellerWallet: sellerWalletStatus()
     },
+    product: leadPackStatus(),
     leadNestAI: leadNestAIReadiness(leadNestAI),
     build: buildInfo()
   };
@@ -565,6 +631,7 @@ function apiDiscovery(req) {
       supportedAssets: [ASSET],
       sellerWallet: sellerWalletStatus()
     },
+    product: leadPackStatus(),
     leadNestAI: leadNestAIReadiness(leadNestAI),
     links: {
       self: `${origin}/.well-known/x402.json`,
@@ -663,6 +730,7 @@ const server = http.createServer(async (req, res) => {
       paymentMode: paymentProvider.mode,
       settlement: paymentProvider.settlement,
       sellerWallet: sellerWalletStatus(),
+      product: leadPackStatus(),
       uptimeSeconds: Math.floor(process.uptime()),
       issuedQuotes: issuedRequirements.size,
       settledPayments: payments.size,
@@ -688,6 +756,7 @@ const server = http.createServer(async (req, res) => {
       quoteTtlSeconds: Math.floor(PAYMENT_TTL_MS / 1000),
       paymentMode: paymentProvider.mode,
       sellerWallet: sellerWalletStatus(),
+      product: leadPackStatus(),
       provider: paymentProvider.describe()
     });
   }
@@ -827,6 +896,15 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "GET" && isProtectedResource(url.pathname)) {
+    const productBlocker = mainnetProductBlocker();
+    if (productBlocker) {
+      return json(res, 503, {
+        error: "Mainnet paid product is not ready.",
+        reason: productBlocker,
+        product: leadPackStatus()
+      });
+    }
+
     const payment = parsePaymentHeader(req.headers["x-payment"] ?? req.headers["payment-signature"]);
     const verification = await verifyPayment(payment);
 

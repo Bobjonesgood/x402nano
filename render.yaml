@@ -16,6 +16,10 @@ services:
         value: USDC
       - key: PRICE_USDC
         value: "0.05"
+      - key: LEAD_PACK_MODE
+        value: demo
+      - key: PREMIUM_LEAD_PACK_JSON
+        sync: false
       - key: LEAD_HANDOFF_ENABLED
         value: "true"
       - key: LEADNESTAI_API_URL
