@@ -866,7 +866,6 @@ function contentTypeFor(filePath) {
 
 async function serveStatic(req, res) {
   const url = requestUrl(req);
-  await refreshProductionLeadPack();
   const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
   const safePath = path
     .normalize(decodeURIComponent(requestedPath))
@@ -907,6 +906,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   const url = requestUrl(req);
+  await refreshProductionLeadPack();
 
   if (req.method === "GET" && (url.pathname === "/api/discover" || url.pathname === "/.well-known/x402.json")) {
     return json(res, 200, apiDiscovery(req));

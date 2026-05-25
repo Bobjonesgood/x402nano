@@ -56,6 +56,12 @@ function envList(name) {
     .filter(Boolean);
 }
 
+function plainUrl(value) {
+  const trimmed = value?.trim() ?? "";
+  const markdownLink = trimmed.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/i);
+  return markdownLink ? markdownLink[2] : trimmed;
+}
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -339,7 +345,7 @@ function sameAllowedHost(url, sourceUrls) {
 }
 
 async function enrichWithAi(pages) {
-  const apiUrl = process.env.AI_INFERENCE_URL?.trim();
+  const apiUrl = plainUrl(process.env.AI_INFERENCE_URL);
   const apiKey = process.env.AI_API_KEY?.trim();
   const model = process.env.AI_MODEL?.trim() || "free-credit-lead-qualifier";
 
