@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install && npm run build
-    startCommand: npm start
+    startCommand: npm run render:start
     envVars:
       - key: X402_PAYMENT_MODE
         value: facilitator
