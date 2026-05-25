@@ -25,6 +25,10 @@ const PAYMENT_HEADER = "X-PAYMENT";
 const RESOURCE_PATH = "/api/lead-intelligence/premium-pack";
 const LEGACY_RESOURCE_PATH = "/api/premium-leads";
 const LEAD_PACK_MODE = process.env.LEAD_PACK_MODE ?? "demo";
+const LEAD_PACK_FILE = process.env.LEAD_PACK_FILE
+  ? path.resolve(process.env.LEAD_PACK_FILE)
+  : path.resolve(__dirname, "../data/production-lead-pack.runtime.json");
+const LEAD_PACK_FILE_REFRESH_MS = Number(process.env.LEAD_PACK_FILE_REFRESH_MS ?? 30000);
 const PAYMENT_TTL_MS = 5 * 60 * 1000;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 90;
@@ -127,8 +131,49 @@ function parseProductionLeadPack(value) {
   }
 }
 
-const productionLeadPack = parseProductionLeadPack(process.env.PREMIUM_LEAD_PACK_JSON);
-const premiumLeadPack = LEAD_PACK_MODE === "production" ? productionLeadPack.records : demoLeadPack;
+let productionLeadPack = parseProductionLeadPack(process.env.PREMIUM_LEAD_PACK_JSON);
+let premiumLeadPack = LEAD_PACK_MODE === "production" ? productionLeadPack.records : demoLeadPack;
+let leadPackSource = productionLeadPack.records.length > 0 ? "env:PREMIUM_LEAD_PACK_JSON" : "none";
+let leadPackFileMtimeMs = 0;
+let leadPackLastCheckedAt = 0;
+
+async function refreshProductionLeadPack({ force = false } = {}) {
+  if (LEAD_PACK_MODE !== "production") return;
+
+  const now = Date.now();
+  if (!force && now - leadPackLastCheckedAt < LEAD_PACK_FILE_REFRESH_MS) return;
+  leadPackLastCheckedAt = now;
+
+  try {
+    const stat = await fs.stat(LEAD_PACK_FILE);
+    if (!force && stat.mtimeMs <= leadPackFileMtimeMs) return;
+
+    const parsed = parseProductionLeadPack(await fs.readFile(LEAD_PACK_FILE, "utf8"));
+    if (parsed.error) {
+      logEvent("lead_pack_refresh_rejected", {
+        source: LEAD_PACK_FILE,
+        reason: parsed.error
+      });
+      return;
+    }
+
+    productionLeadPack = parsed;
+    premiumLeadPack = parsed.records;
+    leadPackSource = `file:${LEAD_PACK_FILE}`;
+    leadPackFileMtimeMs = stat.mtimeMs;
+    logEvent("lead_pack_refreshed", {
+      source: LEAD_PACK_FILE,
+      records: parsed.records.length
+    });
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      logEvent("lead_pack_refresh_failed", {
+        source: LEAD_PACK_FILE,
+        reason: error.message
+      });
+    }
+  }
+}
 
 function leadPackStatus() {
   const productionConfigured = LEAD_PACK_MODE === "production" && premiumLeadPack.length > 0 && !productionLeadPack.error;
@@ -137,6 +182,7 @@ function leadPackStatus() {
   return {
     mode: LEAD_PACK_MODE === "production" ? "production" : "demo",
     records: premiumLeadPack.length,
+    source: leadPackSource,
     productionConfigured,
     mainnetReady,
     disclosure: productionConfigured
@@ -152,6 +198,21 @@ function mainnetProductBlocker() {
     return product.reason;
   }
   return "";
+}
+
+function productionConfigErrors() {
+  const errors = [];
+  const isMainnet = NETWORK === "eip155:8453";
+
+  if (!isMainnet) return errors;
+  if (PAYMENT_MODE !== "facilitator") errors.push("Base mainnet requires X402_PAYMENT_MODE=facilitator.");
+  if (ASSET !== "USDC") errors.push("Base mainnet requires X402_ASSET=USDC.");
+  if (PRICE_USDC !== "0.05") errors.push("Base mainnet launch requires PRICE_USDC=0.05.");
+  if (!EVM_ADDRESS_PATTERN.test(SELLER_ADDRESS)) errors.push("Base mainnet requires a valid SELLER_ADDRESS.");
+  if (LEAD_PACK_MODE !== "production") errors.push("Base mainnet requires LEAD_PACK_MODE=production.");
+  if (productionLeadPack.error) errors.push(productionLeadPack.error);
+
+  return errors;
 }
 
 const payments = new Map();
@@ -409,6 +470,60 @@ function publicReceipt(receipt) {
     transaction: receipt.transaction,
     provider: receipt.provider,
     settledAt: receipt.settledAt
+  };
+}
+
+async function submitUnlockedLeadsToLeadNestAI(receipt, leads) {
+  if (!leadNestAI.enabled || !leadNestAI.autoHandoffOnUnlock) {
+    return {
+      enabled: leadNestAI.enabled,
+      autoHandoffOnUnlock: leadNestAI.autoHandoffOnUnlock,
+      submitted: 0,
+      results: []
+    };
+  }
+
+  const results = [];
+  for (const lead of leads) {
+    const payload = buildLeadHandoffPayload({ config: leadNestAI, receipt, lead });
+    logEvent("lead_handoff_attempted", {
+      receiptId: payload.receiptId,
+      externalLeadId: payload.externalLeadId,
+      idempotencyKey: payload.idempotencyKey,
+      target: leadNestAI.apiUrl || "not_configured",
+      mode: paymentProvider.mode,
+      trigger: "paid_unlock"
+    });
+
+    const result = await submitLeadToLeadNestAI({ config: leadNestAI, payload });
+    logEvent(result.ok ? "lead_handoff_succeeded" : "lead_handoff_failed", {
+      receiptId: payload.receiptId,
+      externalLeadId: payload.externalLeadId,
+      idempotencyKey: payload.idempotencyKey,
+      status: result.status,
+      statusCode: result.statusCode,
+      leadId: result.leadId,
+      duplicate: result.duplicate,
+      reason: result.reason,
+      trigger: "paid_unlock"
+    });
+
+    results.push({
+      externalLeadId: payload.externalLeadId,
+      ok: result.ok,
+      status: result.status,
+      statusCode: result.statusCode,
+      leadId: result.leadId,
+      duplicate: result.duplicate ?? false,
+      reason: result.reason
+    });
+  }
+
+  return {
+    enabled: true,
+    autoHandoffOnUnlock: true,
+    submitted: results.filter(result => result.ok).length,
+    results
   };
 }
 
@@ -751,6 +866,7 @@ function contentTypeFor(filePath) {
 
 async function serveStatic(req, res) {
   const url = requestUrl(req);
+  await refreshProductionLeadPack();
   const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
   const safePath = path
     .normalize(decodeURIComponent(requestedPath))
@@ -800,7 +916,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, {
       status: "ok",
       service: API_NAME,
-      mode: "sandbox",
+      mode: paymentProvider.mode,
       paymentMode: paymentProvider.mode,
       settlement: paymentProvider.settlement,
       sellerWallet: sellerWalletStatus(),
@@ -862,13 +978,6 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "POST" && url.pathname === "/api/leadnestai/handoff") {
     try {
-      if (paymentProvider.mode !== "sandbox") {
-        return json(res, 409, {
-          error: "LeadNestAI handoff is sandbox-only in this version.",
-          reason: "Keep real settlement separated until the handoff workflow is stable."
-        });
-      }
-
       const body = await readBody(req);
       const receiptId = body.receiptId ?? body.receipt?.id;
       const externalLeadId = body.externalLeadId ?? body.lead?.id;
@@ -1009,6 +1118,8 @@ const server = http.createServer(async (req, res) => {
       records: premiumLeadPack.length
     });
 
+    const leadNestAIHandoff = await submitUnlockedLeadsToLeadNestAI(verification.receipt, premiumLeadPack);
+
     const paymentResponse = {
       success: true,
       transaction: verification.receipt.transaction ?? verification.receipt.id,
@@ -1020,7 +1131,8 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, {
       status: "unlocked",
       receipt: publicReceipt(verification.receipt),
-      data: premiumLeadPack
+      data: premiumLeadPack,
+      leadNestAIHandoff
     }, {
       "PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse),
       "X-PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse)
@@ -1034,6 +1146,15 @@ const server = http.createServer(async (req, res) => {
   return json(res, 404, { error: "Not found" });
 });
 
+await refreshProductionLeadPack({ force: true });
+
 server.listen(PORT, HOST, () => {
+  const configErrors = productionConfigErrors();
+  if (configErrors.length > 0) {
+    console.error("Invalid Base mainnet x402 production configuration:");
+    for (const error of configErrors) console.error(`- ${error}`);
+    process.exit(1);
+  }
+
   console.log(`x402 seller server listening on http://${HOST}:${PORT}`);
 });

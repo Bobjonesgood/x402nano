@@ -2,6 +2,8 @@ node_modules/
 dist/
 *.log
 demo-report.json
+data/production-lead-pack.runtime.json
+data/production-lead-pack.runtime.json.tmp
 .env
 .env.*
 !.env.example

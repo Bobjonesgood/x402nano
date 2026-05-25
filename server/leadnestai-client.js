@@ -25,6 +25,7 @@ function canonicalLeadNestAIUrl(value) {
 export function leadNestAIConfig(env = process.env) {
   return {
     enabled: env.LEAD_HANDOFF_ENABLED === "true",
+    autoHandoffOnUnlock: env.LEAD_HANDOFF_ON_UNLOCK === "true",
     apiUrl: canonicalLeadNestAIUrl(env.LEADNESTAI_API_URL ?? ""),
     ingestSecret: (env.LEADNESTAI_INGEST_SECRET ?? "").trim(),
     source: (env.LEADNESTAI_SOURCE_ID ?? "x402nano").trim() || "x402nano"
@@ -34,11 +35,12 @@ export function leadNestAIConfig(env = process.env) {
 export function leadNestAIReadiness(config) {
   return {
     enabled: config.enabled,
+    autoHandoffOnUnlock: config.autoHandoffOnUnlock,
     configured: Boolean(config.apiUrl && config.ingestSecret),
     apiUrl: config.apiUrl || null,
     source: config.source,
     secretFingerprint: secretFingerprint(config.ingestSecret),
-    mode: "manual-selected-leads-only"
+    mode: config.autoHandoffOnUnlock ? "automatic-after-paid-unlock" : "manual-selected-leads-only"
   };
 }
 
