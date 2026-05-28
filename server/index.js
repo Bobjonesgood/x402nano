@@ -24,6 +24,8 @@ const RELEASE_NAME = process.env.RELEASE_NAME ?? "LeadNestAI Machine-Payable Lea
 const PAYMENT_HEADER = "X-PAYMENT";
 const RESOURCE_PATH = "/api/lead-intelligence/premium-pack";
 const LEGACY_RESOURCE_PATH = "/api/premium-leads";
+const ADMIN_LEAD_PACK_PATH = "/api/admin/lead-pack";
+const ADMIN_TOKEN = process.env.LEAD_PACK_ADMIN_TOKEN?.trim() ?? "";
 const LEAD_PACK_MODE = process.env.LEAD_PACK_MODE ?? "demo";
 const LEAD_PACK_FILE = process.env.LEAD_PACK_FILE
   ? path.resolve(process.env.LEAD_PACK_FILE)
@@ -531,6 +533,41 @@ function clientId(req) {
   return req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "unknown";
 }
 
+function adminAuthorized(req) {
+  if (!ADMIN_TOKEN) return false;
+  const auth = req.headers.authorization ?? "";
+  const bearer = auth.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  const headerToken = req.headers["x-admin-token"]?.trim();
+  const provided = bearer || headerToken || "";
+
+  if (!provided || provided.length !== ADMIN_TOKEN.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(ADMIN_TOKEN));
+}
+
+function leadPackAdminSummary() {
+  return {
+    status: "ok",
+    product: leadPackStatus(),
+    leadNestAI: leadNestAIReadiness(leadNestAI),
+    records: premiumLeadPack.map(record => ({
+      id: record.id,
+      businessName: record.businessName,
+      industry: record.industry,
+      location: record.location,
+      estimatedJobValue: record.estimatedJobValue,
+      buyingIntent: record.buyingIntent,
+      painPoints: record.painPoints,
+      recommendedOpener: record.recommendedOpener,
+      confidenceScore: record.confidenceScore,
+      sourceType: record.sourceType,
+      sourceUrls: record.sourceUrls,
+      sourceEvidence: record.sourceEvidence,
+      reviewedAt: record.reviewedAt,
+      contactPolicy: record.contactPolicy
+    }))
+  };
+}
+
 function rateLimit(req) {
   const id = clientId(req);
   const now = Date.now();
@@ -974,6 +1011,19 @@ const server = http.createServer(async (req, res) => {
       settlementMode: paymentProvider.mode,
       automaticOutreach: false
     });
+  }
+
+  if (req.method === "GET" && url.pathname === ADMIN_LEAD_PACK_PATH) {
+    if (!adminAuthorized(req)) {
+      return json(res, ADMIN_TOKEN ? 401 : 404, {
+        error: ADMIN_TOKEN ? "Unauthorized" : "Admin lead pack preview is disabled.",
+        reason: ADMIN_TOKEN
+          ? "Send Authorization: Bearer <LEAD_PACK_ADMIN_TOKEN> to preview the active lead pack."
+          : "Set LEAD_PACK_ADMIN_TOKEN to enable private owner preview without weakening the x402 paywall."
+      });
+    }
+
+    return json(res, 200, leadPackAdminSummary());
   }
 
   if (req.method === "POST" && url.pathname === "/api/leadnestai/handoff") {
