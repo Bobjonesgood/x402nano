@@ -347,7 +347,7 @@ function sameAllowedHost(url, sourceUrls) {
 async function enrichWithAi(pages) {
   const apiUrl = plainUrl(process.env.AI_INFERENCE_URL);
   const apiKey = process.env.AI_API_KEY?.trim();
-  const model = process.env.AI_MODEL?.trim() || "free-credit-lead-qualifier";
+  const model = process.env.AI_MODEL?.trim() || "llama-3.1-8b-instant";
 
   if (!apiUrl || !apiKey || pages.length === 0) {
     return pages.map(page => heuristicLead(page));

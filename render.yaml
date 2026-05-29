@@ -28,6 +28,8 @@ services:
         value: https://www.leadnestai.net
       - key: LEADNESTAI_SOURCE_ID
         value: x402nano
+      - key: AI_MODEL
+        value: llama-3.1-8b-instant
       - key: LEADNESTAI_INGEST_SECRET
         sync: false
       - key: CDP_API_KEY_ID
