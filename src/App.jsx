@@ -1,796 +1,210 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot, CheckCircle2, CircleDollarSign, ClipboardCheck, DatabaseZap, HelpCircle, KeyRound, ListChecks, Loader2, Play, Radar, ReceiptText, Send, ShieldCheck, Wallet } from "lucide-react";
+import { Activity, Bot, CheckCircle2, Copy, DatabaseZap, ExternalLink, Globe2, KeyRound, Radio, ReceiptText, ShieldCheck, WalletCards, Zap } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
-const buyerAddress = "0xAutonomousAgentWallet";
-const leadPackEndpoint = "/api/lead-intelligence/premium-pack";
-
-const howItWorksSteps = [
-  ["Discover", "A buyer or agent can find the paid lead pack and see what it costs."],
-  ["Request", "The API asks for payment before releasing the premium intelligence."],
-  ["Pay", "A sandbox payment proof shows the buyer accepted the quote."],
-  ["Unlock", "LeadNestAI verifies payment, returns a receipt, and releases the lead intelligence pack."]
-];
-
-const viewerCues = [
-  ["What is locked?", "A premium LeadNestAI lead intelligence pack."],
-  ["What unlocks it?", "A sandbox payment proof sent back to the API."],
-  ["Is this real money?", "No. This public demo is sandbox settlement on purpose."]
-];
-
-function Step({ icon: Icon, title, detail, active, done }) {
-  return (
-    <div className={`step ${active ? "active" : ""} ${done ? "done" : ""}`}>
-      <div className="stepIcon">
-        <Icon size={18} />
-      </div>
-      <div>
-        <p>{title}</p>
-        <span>{detail}</span>
-      </div>
-    </div>
-  );
-}
-
-function encodePayment(payment) {
-  return btoa(JSON.stringify(payment)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
+const paidEndpoint = "https://x402nano.onrender.com/api/lead-intelligence/premium-pack";
+const discoveryEndpoint = "https://x402nano.onrender.com/.well-known/x402.json";
 
 function shortAddress(address) {
-  if (!address) return "";
+  if (!address) return "not configured";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-function shortValue(value) {
-  if (!value) return "--";
-  if (value.length <= 18) return value;
-  return `${value.slice(0, 10)}...${value.slice(-6)}`;
-}
-
-function ReceiptPanel({ receipt }) {
-  if (!receipt) return null;
-
-  const rows = [
-    ["Receipt", shortValue(receipt.id)],
-    ["Payer", shortAddress(receipt.payer) || receipt.payer],
-    ["Seller", shortAddress(receipt.seller) || receipt.seller],
-    ["Amount", `${receipt.amount} ${receipt.asset}`],
-    ["Network", receipt.network],
-    ["Settlement", receipt.mode],
-    ["Transaction", shortValue(receipt.transaction)]
-  ];
-
+function StatusCard({ icon: Icon, label, value, tone = "good" }) {
   return (
-    <div className="receiptPanel">
-      <div className="receiptTitle">
-        <ReceiptText size={19} />
-        <h3>Wallet Receipt</h3>
-      </div>
-      <div className="receiptGrid">
-        {rows.map(([label, value]) => (
-          <div className="receiptRow" key={label}>
-            <span>{label}</span>
-            <strong>{value || "--"}</strong>
-          </div>
-        ))}
-      </div>
+    <div className={`statusCard ${tone}`}>
+      <Icon size={18} />
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
 
-function ReadinessPanel({ discovery }) {
-  const x402 = discovery?.x402;
-  const sellerWallet = x402?.sellerWallet;
-  const sandboxMode = x402?.paymentMode === "sandbox";
-  const facilitatorMode = x402?.paymentMode === "facilitator";
-  const networkReady = x402?.supportedNetworks?.includes("eip155:84532");
-  const assetReady = x402?.supportedAssets?.includes("USDC");
-  const sellerReady = sellerWallet?.isValid === true;
-  const facilitatorReady = facilitatorMode && Boolean(x402?.provider?.facilitatorUrl);
+function CopyButton({ value, children }) {
+  const [copied, setCopied] = useState(false);
 
-  const checks = [
-    ["Mode", x402?.paymentMode ?? "loading", sandboxMode || facilitatorMode],
-    ["Seller", sellerReady ? shortAddress(sellerWallet.address) : "placeholder", sellerReady],
-    ["Network", networkReady ? "Base Sepolia" : x402?.supportedNetworks?.[0] ?? "loading", Boolean(networkReady)],
-    ["Asset", assetReady ? "USDC" : x402?.supportedAssets?.[0] ?? "loading", Boolean(assetReady)],
-    ["Real Settlement", facilitatorReady ? "ready" : "off", facilitatorReady]
-  ];
+  async function copy() {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1400);
+  }
 
   return (
-    <div className="readinessPanel">
-      <div className="readinessTitle">
-        <ClipboardCheck size={18} />
-        <h3>Settlement Readiness</h3>
-      </div>
-      <div className="readinessGrid">
-        {checks.map(([label, value, ready]) => (
-          <div className={ready ? "ready" : "waiting"} key={label}>
-            <span>{label}</span>
-            <strong>{value}</strong>
-          </div>
-        ))}
-      </div>
-      <p>
-        {facilitatorReady
-          ? "Facilitator mode is advertising real settlement."
-          : sandboxMode
-            ? "Sandbox is healthy. Flip facilitator mode only after wallet and facilitator testing."
-            : "Discovery is loading the current seller configuration."}
-      </p>
-    </div>
-  );
-}
-
-function UnlockValuePanel() {
-  const items = [
-    ["Buying intent", "Why this company may need service now"],
-    ["Pain points", "What problem to lead with in outreach"],
-    ["Job value", "Estimated commercial value of the opportunity"],
-    ["Opener", "A ready-to-use first message for outreach"]
-  ];
-
-  return (
-    <div className="unlockPanel">
-      <div>
-        <span className="eyebrow">what payment unlocks</span>
-        <h3>Premium lead intelligence for home-service sellers</h3>
-        <p>Instead of a generic contact list, the paid pack returns business context a seller can act on immediately.</p>
-      </div>
-      <div className="unlockGrid">
-        {items.map(([label, detail]) => (
-          <div key={label}>
-            <strong>{label}</strong>
-            <span>{detail}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function HowItWorksPanel() {
-  return (
-    <section className="howPanel">
-      <div className="howIntro">
-        <span className="eyebrow">how LeadNestAI works</span>
-        <h2>Machine-payable lead intelligence infrastructure</h2>
-        <p>
-          The demo shows one focused workflow: discover the paid API, receive a payment quote, retry with payment, and unlock commercially useful lead intelligence.
-        </p>
-      </div>
-      <div className="howSteps">
-        {howItWorksSteps.map(([title, detail], index) => (
-          <div key={title}>
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <strong>{title}</strong>
-            <p>{detail}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function ViewerCuePanel() {
-  return (
-    <div className="viewerCuePanel">
-      <div className="viewerCueTitle">
-        <ListChecks size={18} />
-        <h3>First-Time Viewer Cues</h3>
-      </div>
-      <div className="viewerCueGrid">
-        {viewerCues.map(([question, answer]) => (
-          <div key={question}>
-            <strong>{question}</strong>
-            <span>{answer}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FaqPanel() {
-  const faqs = [
-    ["What does LeadNestAI sell?", "A structured lead intelligence pack with buying intent, pain points, estimated job value, recommended opener, and confidence score."],
-    ["Why does payment happen inside the API?", "The demo proves that a paid resource can quote a price, ask for payment, verify payment proof, and unlock data without a traditional checkout page."],
-    ["Is the public demo using real money?", "No. The public app uses sandbox settlement so the workflow can be shown safely while real facilitator settlement remains off."],
-    ["Who is this for?", "The clearest first audience is service businesses, agencies, lead sellers, and technical buyers who understand paid lead value."],
-    ["What should a viewer notice?", "The value is the unlocked lead intelligence. The x402-style flow is the infrastructure layer that makes the API machine-payable."]
-  ];
-
-  return (
-    <section className="faqPanel">
-      <div className="faqIntro">
-        <span className="eyebrow">quick answers</span>
-        <h2>FAQ For First-Time Viewers</h2>
-        <p>These are the questions most likely to come up when someone sees the demo cold.</p>
-      </div>
-      <div className="faqGrid">
-        {faqs.map(([question, answer]) => (
-          <article key={question}>
-            <div>
-              <HelpCircle size={18} />
-              <h3>{question}</h3>
-            </div>
-            <p>{answer}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function ProofPage({ discovery }) {
-  const paymentMode = discovery?.x402?.paymentMode ?? "loading";
-  const settlement = discovery?.x402?.settlement ?? "loading";
-  const sellerWallet = discovery?.x402?.sellerWallet;
-
-  const proofCards = [
-    ["What this proves", "LeadNestAI can publish pricing, reject unpaid access with 402, accept a payment payload on retry, and unlock a structured lead intelligence pack."],
-    ["How agents discover it", "Buyer agents read /.well-known/x402.json to find the LeadNestAI paid endpoint, price, asset, network, schema, and payment header."],
-    ["What is simulated now", "The public demo uses sandbox USDC settlement and message signatures, so no real funds move while the protocol shape stays intact."],
-    ["What becomes real next", "Facilitator mode keeps the same discovery and X-PAYMENT retry contract, but verifies and settles a real x402 payment payload."]
-  ];
-
-  return (
-    <section className="proofPage">
-      <div className="proofIntro">
-        <span className="eyebrow">demo report</span>
-        <h2>Machine-Payable Lead Intelligence</h2>
-        <p>
-          This is a public proof that buyers and software agents can discover LeadNestAI, pay for a premium lead pack, retry the request, and receive structured lead intelligence.
-        </p>
-      </div>
-
-      <div className="proofCards">
-        {proofCards.map(([title, body]) => (
-          <article key={title}>
-            <h3>{title}</h3>
-            <p>{body}</p>
-          </article>
-        ))}
-      </div>
-
-      <div className="proofFacts">
-        <div>
-          <span>Live mode</span>
-          <strong>{paymentMode}</strong>
-        </div>
-        <div>
-          <span>Settlement</span>
-          <strong>{settlement}</strong>
-        </div>
-        <div>
-          <span>Seller wallet</span>
-          <strong>{sellerWallet?.isValid ? shortAddress(sellerWallet.address) : "loading"}</strong>
-        </div>
-        <div>
-          <span>Revenue shape</span>
-          <strong>Pay per lead pack</strong>
-        </div>
-      </div>
-    </section>
+    <button className="copyButton" onClick={copy} type="button">
+      <Copy size={16} />
+      {copied ? "Copied" : children}
+    </button>
   );
 }
 
 function App() {
-  const [discovery, setDiscovery] = useState(null);
-  const [demoMode, setDemoMode] = useState("agent");
-  const [phase, setPhase] = useState("idle");
-  const [requirements, setRequirements] = useState(null);
-  const [signature, setSignature] = useState("");
-  const [receipt, setReceipt] = useState(null);
-  const [leads, setLeads] = useState([]);
-  const [log, setLog] = useState([]);
+  const [version, setVersion] = useState(null);
+  const [challenge, setChallenge] = useState(null);
   const [error, setError] = useState("");
-  const [autonomous, setAutonomous] = useState(true);
-  const [walletAddress, setWalletAddress] = useState("");
-  const [handoffs, setHandoffs] = useState({});
-
-  const paid = Boolean(receipt);
-  const busy = phase === "requesting" || phase === "signing" || phase === "unlocking" || phase === "wallet";
-  const sellerWallet = discovery?.x402?.sellerWallet;
-  const modeCopy = {
-    agent: {
-      title: "Auto Agent",
-      heading: "Autonomous API Buyer",
-      body: "Discover, price, pay, retry, and receive a LeadNestAI premium lead pack without a wallet popup."
-    },
-    wallet: {
-      title: "Browser Wallet",
-      heading: "Browser Wallet Buyer",
-      body: "Connect a wallet, sign the payment authorization, and unlock the premium lead intelligence pack."
-    },
-    trace: {
-      title: "Protocol Trace",
-      heading: "Protocol Trace",
-      body: "Inspect the discovery links, payment requirements, receipt, signature, and unlock log."
-    }
-  };
-
-  const totalFit = useMemo(() => {
-    if (!leads.length) return 0;
-    return Math.round(leads.reduce((sum, lead) => sum + (lead.confidenceScore ?? lead.fit ?? 0), 0) / leads.length);
-  }, [leads]);
 
   useEffect(() => {
-    fetch("/.well-known/x402.json")
-      .then(response => response.json())
-      .then(data => {
-        setDiscovery(data);
-        appendLog("Loaded /.well-known/x402.json agent discovery manifest.");
-      })
-      .catch(() => setError("Could not reach the seller server."));
+    async function load() {
+      try {
+        const [versionResponse, challengeResponse] = await Promise.all([
+          fetch("/api/version"),
+          fetch("/api/lead-intelligence/premium-pack")
+        ]);
+        setVersion(await versionResponse.json());
+        setChallenge(await challengeResponse.json());
+      } catch {
+        setError("Live status could not be loaded. Refresh or check Render logs.");
+      }
+    }
+
+    load();
   }, []);
 
-  useEffect(() => {
-    if (!window.ethereum) return;
+  const payment = version?.payment ?? {};
+  const product = version?.product ?? {};
+  const leadNestAI = version?.leadNestAI ?? {};
+  const requirements = challenge?.paymentRequirements ?? {};
+  const mainnetLive = payment.mode === "facilitator" && payment.network === "eip155:8453";
+  const protectedBy402 = challenge?.error === "Payment required" && requirements.amount === "0.05";
+  const records = product.records ?? "--";
 
-    let mounted = true;
-
-    window.ethereum
-      .request({ method: "eth_accounts" })
-      .then(accounts => {
-        const address = accounts?.[0] ?? "";
-        if (mounted && address) {
-          setWalletAddress(address);
-          appendLog(`Browser wallet restored: ${shortAddress(address)}.`);
-        }
-      })
-      .catch(() => {});
-
-    function handleAccountsChanged(accounts) {
-      const address = accounts?.[0] ?? "";
-      setWalletAddress(address);
-      if (address) {
-        appendLog(`Browser wallet connected: ${shortAddress(address)}.`);
-      } else {
-        appendLog("Browser wallet disconnected.");
-      }
-    }
-
-    window.ethereum.on?.("accountsChanged", handleAccountsChanged);
-
-    return () => {
-      mounted = false;
-      window.ethereum.removeListener?.("accountsChanged", handleAccountsChanged);
-    };
-  }, []);
-
-  function appendLog(message) {
-    setLog(current => [`${new Date().toLocaleTimeString()}  ${message}`, ...current].slice(0, 8));
-  }
-
-  async function connectWallet() {
-    setError("");
-    if (!window.ethereum) {
-      setError("No browser wallet found. Open this page in Coinbase Wallet, MetaMask, or a wallet-enabled browser.");
-      return "";
-    }
-
-    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-    const address = accounts?.[0] ?? "";
-    setWalletAddress(address);
-    appendLog(`Browser wallet connected: ${shortAddress(address)}.`);
-    return address;
-  }
-
-  async function requestPremiumLeadData() {
-    setError("");
-    setLeads([]);
-    setReceipt(null);
-    setHandoffs({});
-    setSignature("");
-    setRequirements(null);
-
-    try {
-      setPhase("requesting");
-      appendLog(`Agent requested ${leadPackEndpoint} without payment.`);
-      const firstResponse = await fetch(leadPackEndpoint);
-      const paymentChallenge = await firstResponse.json();
-
-      if (firstResponse.status !== 402) {
-        throw new Error("Expected a 402 payment challenge from the seller API.");
-      }
-
-      setRequirements(paymentChallenge.paymentRequirements);
-      appendLog("Seller returned 402 Payment Required with x402 requirements.");
-
-      if (!autonomous) {
-        setPhase("challenged");
-        return;
-      }
-
-      await signAndRetry(paymentChallenge.paymentRequirements);
-    } catch (requestError) {
-      setPhase("idle");
-      setError(requestError.message);
-      appendLog(`Flow stopped: ${requestError.message}`);
-    }
-  }
-
-  async function signAndRetry(activeRequirements = requirements) {
-    try {
-      setPhase("signing");
-      appendLog("Agent prepared USDC payment signature for the protected resource.");
-
-      const signResponse = await fetch("/api/payments/sign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payer: buyerAddress, requirements: activeRequirements })
-      });
-      const signed = await signResponse.json();
-      setSignature(signed.signature);
-
-      setPhase("unlocking");
-      appendLog("Agent retried the API call with X-PAYMENT.");
-
-      const unlockedResponse = await fetch(leadPackEndpoint, {
-        headers: {
-          "X-PAYMENT": signed.encodedPayment ?? encodePayment({
-            payer: buyerAddress,
-            requirements: activeRequirements,
-            signature: signed.signature
-          })
-        }
-      });
-      const unlocked = await unlockedResponse.json();
-
-      if (!unlockedResponse.ok) {
-        throw new Error(unlocked.reason ?? "Payment verification failed.");
-      }
-
-      setReceipt(unlocked.receipt);
-      setLeads(unlocked.data);
-      setPhase("complete");
-      appendLog("Payment verified. LeadNestAI premium pack unlocked.");
-    } catch (paymentError) {
-      setPhase("challenged");
-      setError(paymentError.message);
-      appendLog(`Unlock failed: ${paymentError.message}`);
-    }
-  }
-
-  async function requestWithBrowserWallet() {
-    setError("");
-    setLeads([]);
-    setReceipt(null);
-    setHandoffs({});
-    setSignature("");
-    setRequirements(null);
-
-    try {
-      const payer = walletAddress || (await connectWallet());
-      if (!payer) return;
-
-      setPhase("requesting");
-      appendLog(`Browser wallet buyer requested ${leadPackEndpoint} without payment.`);
-      const firstResponse = await fetch(leadPackEndpoint);
-      const paymentChallenge = await firstResponse.json();
-
-      if (firstResponse.status !== 402) {
-        throw new Error("Expected a 402 payment challenge from the seller API.");
-      }
-
-      const activeRequirements = paymentChallenge.paymentRequirements;
-      setRequirements(activeRequirements);
-      appendLog("Seller returned 402 challenge for browser wallet signing.");
-
-      setPhase("wallet");
-      const messageResponse = await fetch("/api/payments/browser-wallet-message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payer, requirements: activeRequirements })
-      });
-      const messagePayload = await messageResponse.json();
-
-      if (!messageResponse.ok) {
-        throw new Error(messagePayload.reason ?? messagePayload.error ?? "Could not prepare wallet signing message.");
-      }
-
-      appendLog("Wallet signature requested.");
-      const walletSignature = await window.ethereum.request({
-        method: "personal_sign",
-        params: [messagePayload.message, payer]
-      });
-      setSignature(walletSignature);
-
-      setPhase("unlocking");
-      appendLog("Browser wallet signature captured. Retrying with X-PAYMENT.");
-      const unlockedResponse = await fetch(leadPackEndpoint, {
-        headers: {
-          "X-PAYMENT": encodePayment({
-            payer,
-            requirements: activeRequirements,
-            signature: walletSignature,
-            signatureType: "browser-wallet",
-            message: messagePayload.message
-          })
-        }
-      });
-      const unlocked = await unlockedResponse.json();
-
-      if (!unlockedResponse.ok) {
-        throw new Error(unlocked.reason ?? "Wallet payment verification failed.");
-      }
-
-      setReceipt(unlocked.receipt);
-      setLeads(unlocked.data);
-      setPhase("complete");
-      appendLog("Browser wallet payment verified. LeadNestAI premium pack unlocked.");
-    } catch (walletError) {
-      setPhase("idle");
-      setError(walletError.message);
-      appendLog(`Wallet flow stopped: ${walletError.message}`);
-    }
-  }
-
-  async function sendLeadToLeadNestAI(lead) {
-    if (!receipt?.id) return;
-
-    setHandoffs(current => ({
-      ...current,
-      [lead.id]: { status: "sending", message: "Sending to LeadNestAI..." }
-    }));
-    appendLog(`LeadNestAI handoff attempted for ${lead.businessName}.`);
-
-    try {
-      const response = await fetch("/api/leadnestai/handoff", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          receiptId: receipt.id,
-          externalLeadId: lead.id
-        })
-      });
-      const body = await response.json();
-
-      if (!response.ok) {
-        throw new Error(body.reason ?? body.error ?? "LeadNestAI handoff failed.");
-      }
-
-      const duplicateText = body.duplicate ? "Duplicate found" : "Stored";
-      setHandoffs(current => ({
-        ...current,
-        [lead.id]: {
-          status: body.duplicate ? "duplicate" : "sent",
-          message: `${duplicateText} in LeadNestAI${body.leadId ? ` as ${body.leadId}` : ""}.`
-        }
-      }));
-      appendLog(`LeadNestAI handoff ${body.duplicate ? "deduplicated" : "succeeded"} for ${lead.businessName}.`);
-    } catch (handoffError) {
-      setHandoffs(current => ({
-        ...current,
-        [lead.id]: { status: "failed", message: handoffError.message }
-      }));
-      appendLog(`LeadNestAI handoff failed for ${lead.businessName}.`);
-    }
-  }
+  const proofItems = useMemo(() => [
+    ["Live price", `${payment.amount ?? "0.05"} ${payment.asset ?? "USDC"}`],
+    ["Network", payment.network === "eip155:8453" ? "Base Mainnet" : payment.network ?? "loading"],
+    ["Settlement", payment.settlement ?? "loading"],
+    ["Seller", shortAddress(payment.sellerWallet?.address)]
+  ], [payment]);
 
   return (
     <main>
-      <section className="topbar">
-        <div>
-          <span className="eyebrow">LeadNestAI public sandbox</span>
-          <h1>LeadNestAI</h1>
+      <section className="hero">
+        <div className="heroVisual" aria-hidden="true">
+          <div className="terminal">
+            <div className="terminalBar">
+              <span />
+              <span />
+              <span />
+            </div>
+            <code>GET /api/lead-intelligence/premium-pack</code>
+            <code className="warn">402 Payment Required</code>
+            <code>Pay 0.05 USDC on Base</code>
+            <code className="ok">Unlock {records} lead intelligence records</code>
+          </div>
         </div>
-        <div className="statusPill">
-          <span className={paid ? "dot paid" : "dot"} />
-          {paid ? "Lead pack unlocked" : "Payment required"}
+
+        <div className="heroCopy">
+          <span className="eyebrow">LeadNestAI x402 paid API</span>
+          <h1>Real estate lead intelligence that agents can buy with HTTP 402.</h1>
+          <p>
+            x402nano is a live Base mainnet paid endpoint. Buyers and autonomous agents receive a payment challenge, settle 0.05 USDC, and unlock the active LeadNestAI lead pack.
+          </p>
+          <div className="heroActions">
+            <a className="primaryButton" href={paidEndpoint} rel="noreferrer" target="_blank">
+              <Zap size={18} />
+              Open Paid Endpoint
+            </a>
+            <a className="secondaryButton" href={discoveryEndpoint} rel="noreferrer" target="_blank">
+              <Globe2 size={18} />
+              View x402 Discovery
+            </a>
+          </div>
         </div>
       </section>
 
-      <section className="proofStrip">
-        <div>
-          <span>Proves</span>
-          <strong>Machine-payable lead intelligence</strong>
-        </div>
-        <div>
-          <span>Discovery</span>
-          <strong>API publishes price and rules</strong>
-        </div>
-        <div>
-          <span>Unlock</span>
-          <strong>Payment proof unlocks data</strong>
-        </div>
-        <div>
-          <span>Now</span>
-          <strong>Sandbox USDC unlock</strong>
-        </div>
-        <div>
-          <span>Next</span>
-          <strong>Base Sepolia facilitator</strong>
-        </div>
+      <section className="liveStatus">
+        <StatusCard icon={Radio} label="Paywall" value={protectedBy402 ? "HTTP 402 live" : "check required"} tone={protectedBy402 ? "good" : "warn"} />
+        <StatusCard icon={WalletCards} label="Settlement" value={mainnetLive ? "Base mainnet" : payment.mode ?? "loading"} tone={mainnetLive ? "good" : "warn"} />
+        <StatusCard icon={DatabaseZap} label="Lead pack" value={`${records} records`} />
+        <StatusCard icon={ShieldCheck} label="LeadNestAI" value={leadNestAI.mode ?? "loading"} />
       </section>
 
-      <HowItWorksPanel />
+      {error && <div className="error">{error}</div>}
 
-      <section className="workspace">
-        <div className="controlPanel">
-          <div className="modeTabs" role="tablist" aria-label="Demo mode">
-            {Object.entries(modeCopy).map(([mode, copy]) => (
-              <button
-                aria-selected={demoMode === mode}
-                className={demoMode === mode ? "selected" : ""}
-                key={mode}
-                onClick={() => setDemoMode(mode)}
-                role="tab"
-                type="button"
-              >
-                {copy.title}
-              </button>
+      <section className="grid two">
+        <article className="panel">
+          <div className="panelTitle">
+            <Bot size={20} />
+            <h2>How Buyers Use It</h2>
+          </div>
+          <ol className="steps">
+            <li>Discover the paid resource at <code>/.well-known/x402.json</code>.</li>
+            <li>Call the lead pack endpoint and receive <code>402 Payment Required</code>.</li>
+            <li>Submit an x402 payment payload for <code>0.05 USDC</code> on Base mainnet.</li>
+            <li>Receive the unlocked real estate lead intelligence pack and receipt.</li>
+          </ol>
+          <div className="endpointBox">
+            <span>Paid endpoint</span>
+            <code>{paidEndpoint}</code>
+            <CopyButton value={paidEndpoint}>Copy endpoint</CopyButton>
+          </div>
+        </article>
+
+        <article className="panel">
+          <div className="panelTitle">
+            <ReceiptText size={20} />
+            <h2>Live Proof</h2>
+          </div>
+          <div className="proofGrid">
+            {proofItems.map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
             ))}
           </div>
-
-          <div className="panelHead">
-            {demoMode === "wallet" ? <Wallet size={24} /> : demoMode === "trace" ? <ReceiptText size={24} /> : <Bot size={24} />}
-            <div>
-              <h2>{modeCopy[demoMode].heading}</h2>
-              <p>{discovery ? modeCopy[demoMode].body : "Discovering seller endpoint..."}</p>
-            </div>
+          <div className="challengeBox">
+            <span>Current challenge</span>
+            <code>{requirements.amount ?? "0.05"} {requirements.asset ?? "USDC"} to {shortAddress(requirements.payTo)}</code>
           </div>
-
-          <UnlockValuePanel />
-          <ViewerCuePanel />
-
-          {demoMode === "agent" && (
-            <>
-              <button className="primaryButton" onClick={requestPremiumLeadData} disabled={busy}>
-                {busy && phase !== "wallet" ? <Loader2 className="spin" size={19} /> : <Play size={19} />}
-                Unlock Premium Lead Pack
-              </button>
-
-              <label className="toggleRow">
-                <input type="checkbox" checked={autonomous} onChange={event => setAutonomous(event.target.checked)} />
-                <span>Auto-sign sandbox USDC payment and unlock lead intelligence</span>
-              </label>
-
-              {phase === "challenged" && (
-                <button className="secondaryButton" onClick={() => signAndRetry()}>
-                  <KeyRound size={18} />
-                  Sign Payment And Unlock
-                </button>
-              )}
-            </>
-          )}
-
-          {demoMode === "wallet" && (
-            <div className="walletActions">
-              <button className="secondaryButton" onClick={connectWallet} disabled={busy}>
-                <Wallet size={18} />
-                {walletAddress ? shortAddress(walletAddress) : "Connect Wallet"}
-              </button>
-              <button className="primaryButton" onClick={requestWithBrowserWallet} disabled={busy}>
-                {phase === "wallet" ? <Loader2 className="spin" size={18} /> : <KeyRound size={18} />}
-                Pay To Unlock Lead Pack
-              </button>
-            </div>
-          )}
-
-          {demoMode === "trace" && (
-            <div className="traceSummary">
-              <div>
-                <span>Discovery</span>
-                <strong>{discovery?.links?.self ? "Ready" : "Loading"}</strong>
-              </div>
-              <div>
-                <span>Challenge</span>
-                <strong>{requirements?.nonce ? "Issued" : "--"}</strong>
-              </div>
-              <div>
-                <span>Receipt</span>
-                <strong>{receipt?.id ? shortValue(receipt.id) : "--"}</strong>
-              </div>
-            </div>
-          )}
-
-          {error && <div className="error">{error}</div>}
-
-          {sellerWallet && !sellerWallet.isValid && (
-            <div className="warning">
-              Seller wallet is still a placeholder. Set <strong>SELLER_ADDRESS</strong> in Render before real settlement.
-            </div>
-          )}
-
-          <ReadinessPanel discovery={discovery} />
-
-          <div className="metrics">
-            <div>
-              <span>Price</span>
-              <strong>{requirements?.amount ?? "0.05"} USDC</strong>
-            </div>
-            <div>
-              <span>Network</span>
-              <strong>{requirements?.network ?? "base-sepolia"}</strong>
-            </div>
-            <div>
-              <span>Avg confidence</span>
-              <strong>{totalFit || "--"}%</strong>
-            </div>
-            <div>
-              <span>Seller</span>
-              <strong>{sellerWallet?.isValid ? shortAddress(sellerWallet.address) : "placeholder"}</strong>
-            </div>
-          </div>
-        </div>
-
-        <div className="flowPanel">
-          <Step icon={Radar} title="Discover LeadNestAI" detail="/.well-known/x402.json publishes the paid lead pack endpoint" active={phase === "idle"} done={Boolean(discovery)} />
-          <Step icon={DatabaseZap} title="Request Lead Pack" detail="Seller returns 402 instead of lead intelligence" active={phase === "requesting"} done={Boolean(requirements)} />
-          <Step icon={CircleDollarSign} title="Pay Automatically" detail="Agent signs the x402 payment payload" active={phase === "signing"} done={Boolean(signature)} />
-          <Step icon={ShieldCheck} title="Receive Intelligence" detail="Retry includes X-PAYMENT and unlocks the lead pack" active={phase === "unlocking"} done={paid} />
-        </div>
+        </article>
       </section>
 
-      <section className="dataGrid">
-        <div className="dataPanel">
-          <div className="sectionHead">
-            <h2>LeadNestAI Premium Pack</h2>
-            {paid && <CheckCircle2 size={20} />}
-          </div>
-          <div className="leadList">
-            {leads.length ? (
-              leads.map(lead => (
-                <article className="lead" key={lead.id}>
-                  <div>
-                    <span>{lead.id}</span>
-                    <h3>{lead.businessName ?? lead.company}</h3>
-                  </div>
-                  <p>{lead.buyingIntent ?? lead.intent}</p>
-                  {lead.painPoints?.length > 0 && (
-                    <ul className="painList">
-                      {lead.painPoints.map(point => (
-                        <li key={point}>{point}</li>
-                      ))}
-                    </ul>
-                  )}
-                  {lead.recommendedOpener && <p className="opener">"{lead.recommendedOpener}"</p>}
-                  <div className="leadMeta">
-                    <strong>{lead.industry ?? lead.contact}</strong>
-                    <span>{lead.location ?? lead.estimatedJobValue}</span>
-                    <span>{lead.estimatedJobValue ?? lead.budget}</span>
-                    <b>{lead.confidenceScore ?? lead.fit}% confidence</b>
-                  </div>
-                  <div className="handoffActions">
-                    <button
-                      className="handoffButton"
-                      disabled={!receipt?.id || handoffs[lead.id]?.status === "sending"}
-                      onClick={() => sendLeadToLeadNestAI(lead)}
-                      type="button"
-                    >
-                      {handoffs[lead.id]?.status === "sending" ? <Loader2 className="spin" size={16} /> : <Send size={16} />}
-                      Send to LeadNestAI
-                    </button>
-                    {handoffs[lead.id]?.message && (
-                      <span className={`handoffStatus ${handoffs[lead.id]?.status ?? ""}`}>{handoffs[lead.id].message}</span>
-                    )}
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="emptyState">A premium LeadNestAI lead pack is locked behind the payment challenge.</div>
-            )}
-          </div>
-        </div>
-
-        <div className="dataPanel">
-          <div className="sectionHead">
-            <h2>Protocol Trace</h2>
-          </div>
-          <ReceiptPanel receipt={receipt} />
-          <pre>{JSON.stringify({ discovery: discovery?.links, requirements, receipt, signature: signature ? `${signature.slice(0, 18)}...` : "" }, null, 2)}</pre>
-          <div className="log">
-            {log.map(item => (
-              <span key={item}>{item}</span>
-            ))}
-          </div>
-        </div>
+      <section className="grid three">
+        <article className="panel">
+          <CheckCircle2 size={22} />
+          <h3>What Customers Get</h3>
+          <p>Structured business name, industry, location, buying-intent signal, pain points, source evidence, confidence score, and a recommended opener.</p>
+        </article>
+        <article className="panel">
+          <Activity size={22} />
+          <h3>Who To Sell To</h3>
+          <p>AI-agent builders, real estate automation teams, CRM enrichment users, lead sellers, x402 marketplaces, and Base ecosystem builders.</p>
+        </article>
+        <article className="panel">
+          <KeyRound size={22} />
+          <h3>Owner Preview</h3>
+          <p>The owner can inspect active leads through the protected admin preview route using <code>LEAD_PACK_ADMIN_TOKEN</code>.</p>
+        </article>
       </section>
 
-      <ProofPage discovery={discovery} />
-      <FaqPanel />
+      <section className="launchPanel">
+        <div>
+          <span className="eyebrow">sales message</span>
+          <h2>Copy this when pitching builders.</h2>
+        </div>
+        <pre>{`I launched a live x402 paid API on Base mainnet.
+
+It returns real estate lead intelligence after a 0.05 USDC payment.
+
+Endpoint:
+${paidEndpoint}
+
+Best fit:
+- AI agents
+- lead-gen automation
+- real estate SaaS workflows
+- x402/API marketplace buyers`}</pre>
+        <CopyButton value={`I launched a live x402 paid API on Base mainnet.\n\nIt returns real estate lead intelligence after a 0.05 USDC payment.\n\nEndpoint:\n${paidEndpoint}\n\nBest fit:\n- AI agents\n- lead-gen automation\n- real estate SaaS workflows\n- x402/API marketplace buyers`}>
+          Copy sales message
+        </CopyButton>
+      </section>
+
+      <footer>
+        <a href="https://www.leadnestai.com" rel="noreferrer" target="_blank">
+          LeadNestAI <ExternalLink size={14} />
+        </a>
+        <span>Machine-payable lead intelligence on Base mainnet.</span>
+      </footer>
     </main>
   );
 }
