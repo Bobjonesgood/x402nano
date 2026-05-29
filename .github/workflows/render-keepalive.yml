@@ -1,0 +1,21 @@
+name: Render Keepalive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping x402nano health
+        run: |
+          curl --fail --silent --show-error --retry 2 --retry-delay 5 \
+            https://x402nano.onrender.com/api/health
+
+      - name: Ping x402nano version
+        run: |
+          curl --fail --silent --show-error --retry 2 --retry-delay 5 \
+            https://x402nano.onrender.com/api/version
