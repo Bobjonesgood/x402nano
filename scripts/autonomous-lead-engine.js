@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, "..");
 const DEFAULT_OUTPUT_FILE = path.resolve(ROOT_DIR, "data/production-lead-pack.runtime.json");
+const DEFAULT_MARKET_FILE = path.resolve(ROOT_DIR, "data/lead-engine-markets.json");
 const DEFAULT_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const USER_AGENT = process.env.LEAD_ENGINE_USER_AGENT ?? "LeadNestAI-x402nano/0.1 public-source lead research";
 
@@ -54,6 +55,32 @@ function envList(name) {
     .split(/\r?\n|,/)
     .map(item => item.trim())
     .filter(Boolean);
+}
+
+function dedupeList(values) {
+  return [...new Set(values.map(value => String(value).trim()).filter(Boolean))];
+}
+
+async function loadMarketSources(marketName) {
+  if (!marketName) return { sources: [], market: null };
+
+  const marketFile = path.resolve(process.env.LEAD_ENGINE_MARKET_FILE ?? DEFAULT_MARKET_FILE);
+  const config = JSON.parse(await fs.readFile(marketFile, "utf8"));
+  const market = config.markets?.[marketName];
+
+  if (!market) {
+    const available = Object.keys(config.markets ?? {}).join(", ") || "none configured";
+    throw new Error(`Unknown LEAD_ENGINE_MARKET=${marketName}. Available markets: ${available}.`);
+  }
+
+  return {
+    market: {
+      id: marketName,
+      label: market.label ?? marketName,
+      areas: Array.isArray(market.areas) ? market.areas : []
+    },
+    sources: Array.isArray(market.sources) ? market.sources.map(String) : []
+  };
 }
 
 function plainUrl(value) {
@@ -425,9 +452,20 @@ async function writePack(file, records) {
 }
 
 async function runOnce() {
-  const sourceUrls = envList("LEAD_ENGINE_SOURCE_URLS");
+  const marketName = process.env.LEAD_ENGINE_MARKET?.trim() || "";
+  const marketConfig = await loadMarketSources(marketName);
+  const manualSourceUrls = envList("LEAD_ENGINE_SOURCE_URLS");
+  const sourceMode = process.env.LEAD_ENGINE_SOURCE_MODE?.trim() || (marketName ? "market" : "manual");
+  const sourceUrls = dedupeList(
+    sourceMode === "append"
+      ? [...marketConfig.sources, ...manualSourceUrls]
+      : marketName
+        ? marketConfig.sources
+        : manualSourceUrls
+  );
+
   if (sourceUrls.length === 0) {
-    throw new Error("Set LEAD_ENGINE_SOURCE_URLS to one or more public real estate directory/search URLs.");
+    throw new Error("Set LEAD_ENGINE_MARKET to a configured market or LEAD_ENGINE_SOURCE_URLS to one or more public real estate directory/search URLs.");
   }
 
   const outputFile = path.resolve(process.env.LEAD_PACK_OUTPUT_FILE ?? process.env.LEAD_PACK_FILE ?? DEFAULT_OUTPUT_FILE);
@@ -443,6 +481,10 @@ async function runOnce() {
   };
 
   console.log(`lead engine run started`);
+  if (marketConfig.market) {
+    console.log(`market: ${marketConfig.market.id} (${marketConfig.market.label})`);
+    console.log(`areas: ${marketConfig.market.areas.join(", ")}`);
+  }
   console.log(`sources: ${sourceUrls.length}`);
   console.log(`output: ${outputFile}`);
 

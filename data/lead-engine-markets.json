@@ -1,0 +1,44 @@
+{
+  "markets": {
+    "north-mississippi": {
+      "label": "North Mississippi Real Estate Pack",
+      "areas": [
+        "Tupelo",
+        "Oxford",
+        "Southaven",
+        "DeSoto County",
+        "Starkville",
+        "Columbus",
+        "Lee County",
+        "Lafayette County",
+        "Oktibbeha County",
+        "Lowndes County"
+      ],
+      "sources": [
+        "https://www.tupeloms.gov/departments/development-services/gis-maps-location-information",
+        "https://leecountyms.com/tax-assessor/",
+        "https://leecountyms.com/",
+        "https://www.lafayettems.com/tax-assessor-collector/",
+        "https://www.lafayettems.com/how-do-i/",
+        "https://www.desotocountyms.gov/109/Maps",
+        "https://www.desotocountyms.gov/DocumentCenter/View/3603/DeSoto-County-Foreclosures-Lookup-Instructions",
+        "https://landrecords.desotocountyms.gov/acclaimwebs",
+        "https://www.oktibbeha.ms.gov/",
+        "http://deltacomputersystems.com/MS/MS53/plinkquerym.html",
+        "http://www.deltacomputersystems.com/MS/MS53/landredemptionm.html",
+        "https://maps.agdmaps.com/ms/oktibbeha/",
+        "https://www.lowndescountyms.com/179/Tax-Office",
+        "https://lowndescountyms.com/176/Chancery-Clerk",
+        "https://chancery.lowndescountyms.com/"
+      ]
+    },
+    "houston-harris-county": {
+      "label": "Houston / Harris County Real Estate Pack",
+      "areas": [
+        "Houston",
+        "Harris County"
+      ],
+      "sources": []
+    }
+  }
+}

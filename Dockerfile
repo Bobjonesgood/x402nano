@@ -14,6 +14,6 @@ RUN npm ci --omit=dev
 COPY --from=build /app/dist ./dist
 COPY server ./server
 COPY scripts ./scripts
+COPY data ./data
 EXPOSE 4021
 CMD ["npm", "start"]
-
