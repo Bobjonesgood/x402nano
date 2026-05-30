@@ -105,20 +105,28 @@ function today() {
 }
 
 function stripHtml(html) {
-  return html
+  return decodeHtml(html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim());
+}
+
+function decodeHtml(value) {
+  return value
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&#39;/g, "'")
     .replace(/&quot;/g, '"')
+    .replace(/&#8211;|&ndash;/g, "-")
+    .replace(/&#8212;|&mdash;/g, "-")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 function pageTitle(html) {
-  return html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/\s+/g, " ").trim() ?? "";
+  return decodeHtml(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "");
 }
 
 function absoluteUrl(href, baseUrl) {
@@ -179,6 +187,28 @@ function inferBusinessName(title, url) {
   }
 }
 
+function inferBetterBusinessName(title, url) {
+  const genericTitles = new Set([
+    "agents",
+    "agents listing",
+    "about",
+    "home",
+    "meet the team",
+    "our team",
+    "tupelo office",
+    "brokers category",
+    "real estate brokers category"
+  ]);
+  const candidates = decodeHtml(title)
+    .split(/\s*(?:\||-|–|—|:)\s*/g)
+    .map(part => part.replace(/\b(home|about|contact|services)\b/gi, "").replace(/\s+/g, " ").trim())
+    .filter(part => part.length >= 3 && !genericTitles.has(part.toLowerCase()));
+  if (candidates[0]) return candidates[0].slice(0, 90);
+  const branded = candidates.find(part => /realty|real estate|realtors?|properties|broker|banker|keller|agency|group|team|land/i.test(part));
+  if (branded) return branded.slice(0, 90);
+  return inferBusinessName(title, url);
+}
+
 function inferLocation(text) {
   const cityState = text.match(/\b([A-Z][a-zA-Z .'-]{2,40}),\s*([A-Z]{2})\b/);
   return cityState ? `${cityState[1].trim()}, ${cityState[2]}` : "Public web source";
@@ -201,7 +231,7 @@ function leadId(name, url) {
 }
 
 function heuristicLead(page) {
-  const name = inferBusinessName(page.title, page.url);
+  const name = inferBetterBusinessName(page.title, page.url);
   const evidence = evidenceFromText(page.text);
   const confidenceScore = signalScore(page.text);
 
