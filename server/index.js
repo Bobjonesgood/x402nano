@@ -138,6 +138,7 @@ let premiumLeadPack = LEAD_PACK_MODE === "production" ? productionLeadPack.recor
 let leadPackSource = productionLeadPack.records.length > 0 ? "env:PREMIUM_LEAD_PACK_JSON" : "none";
 let leadPackFileMtimeMs = 0;
 let leadPackLastCheckedAt = 0;
+let leadPackWorkerStatus = null;
 
 async function refreshProductionLeadPack({ force = false } = {}) {
   if (LEAD_PACK_MODE !== "production") return;
@@ -163,6 +164,7 @@ async function refreshProductionLeadPack({ force = false } = {}) {
     premiumLeadPack = parsed.records;
     leadPackSource = `file:${LEAD_PACK_FILE}`;
     leadPackFileMtimeMs = stat.mtimeMs;
+    leadPackWorkerStatus = await readLeadPackWorkerStatus();
     logEvent("lead_pack_refreshed", {
       source: LEAD_PACK_FILE,
       records: parsed.records.length
@@ -177,6 +179,14 @@ async function refreshProductionLeadPack({ force = false } = {}) {
   }
 }
 
+async function readLeadPackWorkerStatus() {
+  try {
+    return JSON.parse(await fs.readFile(`${LEAD_PACK_FILE}.status.json`, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 function leadPackStatus() {
   const productionConfigured = LEAD_PACK_MODE === "production" && premiumLeadPack.length > 0 && !productionLeadPack.error;
   const mainnetReady = NETWORK !== "eip155:8453" || productionConfigured;
@@ -185,6 +195,7 @@ function leadPackStatus() {
     mode: LEAD_PACK_MODE === "production" ? "production" : "demo",
     records: premiumLeadPack.length,
     source: leadPackSource,
+    worker: leadPackWorkerStatus,
     productionConfigured,
     mainnetReady,
     disclosure: productionConfigured

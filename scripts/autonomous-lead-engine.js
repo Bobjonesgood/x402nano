@@ -451,6 +451,13 @@ async function writePack(file, records) {
   await fs.rename(`${file}.tmp`, file);
 }
 
+async function writePackStatus(file, status) {
+  const statusFile = `${file}.status.json`;
+  await fs.mkdir(path.dirname(statusFile), { recursive: true });
+  await fs.writeFile(`${statusFile}.tmp`, `${JSON.stringify(status, null, 2)}\n`);
+  await fs.rename(`${statusFile}.tmp`, statusFile);
+}
+
 async function runOnce() {
   const marketName = process.env.LEAD_ENGINE_MARKET?.trim() || "";
   const marketConfig = await loadMarketSources(marketName);
@@ -485,6 +492,7 @@ async function runOnce() {
     console.log(`market: ${marketConfig.market.id} (${marketConfig.market.label})`);
     console.log(`areas: ${marketConfig.market.areas.join(", ")}`);
   }
+  console.log(`source mode: ${sourceMode}`);
   console.log(`sources: ${sourceUrls.length}`);
   console.log(`output: ${outputFile}`);
 
@@ -496,10 +504,34 @@ async function runOnce() {
     .slice(0, packLimit);
 
   if (records.length === 0) {
+    await writePackStatus(outputFile, {
+      status: "empty",
+      ranAt: new Date().toISOString(),
+      market: marketConfig.market,
+      sourceMode,
+      sources: sourceUrls,
+      crawledPages: pages.length,
+      enrichedRecords: enriched.length,
+      qualifiedRecords: 0,
+      minConfidence,
+      message: "No qualified records were produced. Existing production pack was preserved."
+    });
     throw new Error("No qualified lead records were produced. Keep the existing production pack unchanged.");
   }
 
   await writePack(outputFile, records);
+  await writePackStatus(outputFile, {
+    status: "ok",
+    ranAt: new Date().toISOString(),
+    market: marketConfig.market,
+    sourceMode,
+    sources: sourceUrls,
+    crawledPages: pages.length,
+    enrichedRecords: enriched.length,
+    qualifiedRecords: records.length,
+    minConfidence,
+    outputFile
+  });
   console.log(`lead engine run finished`);
   console.log(`qualified records: ${records.length}`);
 }
