@@ -30,6 +30,7 @@ main {
 .hero,
 .liveStatus,
 .grid,
+.locationPanel,
 .launchPanel,
 footer {
   margin: 0 auto;
@@ -184,6 +185,58 @@ h1 {
   gap: 10px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 18px;
+}
+
+.locationPanel {
+  background: #ffffff;
+  border: 1px solid #dce3db;
+  border-radius: 8px;
+  box-shadow: 0 18px 44px rgba(24, 34, 27, 0.08);
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(360px, 1.2fr);
+  margin-bottom: 18px;
+  padding: 20px;
+}
+
+.locationPanel h2 {
+  color: #20372e;
+  font-size: clamp(1.35rem, 3vw, 2.2rem);
+  line-height: 1.05;
+}
+
+.locationPanel p {
+  color: #52665b;
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
+.locationForm {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(160px, 1fr) minmax(90px, 0.45fr) minmax(120px, 0.55fr);
+}
+
+.locationForm label {
+  color: #52665b;
+  display: grid;
+  font-size: 0.82rem;
+  font-weight: 800;
+  gap: 6px;
+}
+
+.locationForm input {
+  border: 1px solid #dce5dc;
+  border-radius: 8px;
+  color: #17211b;
+  min-height: 44px;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+.endpointBox.local {
+  grid-column: 1 / -1;
+  margin-top: 0;
 }
 
 .statusCard {
@@ -374,6 +427,8 @@ footer a {
   .grid.two,
   .grid.three,
   .liveStatus,
+  .locationPanel,
+  .locationForm,
   .proofGrid {
     grid-template-columns: 1fr;
   }

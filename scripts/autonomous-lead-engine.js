@@ -357,6 +357,7 @@ async function enrichWithAi(pages) {
     "Return only valid JSON: an array of qualified real estate lead records.",
     "Use only the supplied public page evidence. Do not invent private contact data.",
     "Each record must include id, businessName, industry, location, estimatedJobValue, buyingIntent, painPoints, recommendedOpener, confidenceScore, sourceType, sourceUrls, sourceEvidence, reviewedAt, contactPolicy.",
+    "Make location as local as the evidence allows. Prefer City, ST. Include postalCode when a public source explicitly shows a zip code.",
     "Prefer businesses with clear buyer/seller/property inquiry or client-intake signals.",
     JSON.stringify(pages.map(page => ({
       url: page.url,

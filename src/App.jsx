@@ -42,13 +42,27 @@ function App() {
   const [version, setVersion] = useState(null);
   const [challenge, setChallenge] = useState(null);
   const [error, setError] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zip, setZip] = useState("");
+
+  const localEndpointPath = useMemo(() => {
+    const params = new URLSearchParams();
+    if (city.trim()) params.set("city", city.trim());
+    if (state.trim()) params.set("state", state.trim());
+    if (zip.trim()) params.set("zip", zip.trim());
+    const query = params.toString();
+    return `/api/lead-intelligence/premium-pack${query ? `?${query}` : ""}`;
+  }, [city, state, zip]);
+
+  const localPaidEndpoint = `https://x402nano.onrender.com${localEndpointPath}`;
 
   useEffect(() => {
     async function load() {
       try {
         const [versionResponse, challengeResponse] = await Promise.all([
           fetch("/api/version"),
-          fetch("/api/lead-intelligence/premium-pack")
+          fetch(localEndpointPath)
         ]);
         setVersion(await versionResponse.json());
         setChallenge(await challengeResponse.json());
@@ -58,7 +72,7 @@ function App() {
     }
 
     load();
-  }, []);
+  }, [localEndpointPath]);
 
   const payment = version?.payment ?? {};
   const product = version?.product ?? {};
@@ -99,7 +113,7 @@ function App() {
             x402nano is a live Base mainnet paid endpoint. Buyers and autonomous agents receive a payment challenge, settle 0.05 USDC, and unlock the active LeadNestAI lead pack.
           </p>
           <div className="heroActions">
-            <a className="primaryButton" href={paidEndpoint} rel="noreferrer" target="_blank">
+            <a className="primaryButton" href={localPaidEndpoint} rel="noreferrer" target="_blank">
               <Zap size={18} />
               Open Paid Endpoint
             </a>
@@ -120,6 +134,33 @@ function App() {
 
       {error && <div className="error">{error}</div>}
 
+      <section className="locationPanel">
+        <div>
+          <span className="eyebrow">local lead request</span>
+          <h2>Build a city or zip-specific x402 endpoint.</h2>
+          <p>Agents can request only the market they care about. If no active records match that city, state, or zip, the API returns no-inventory instead of charging for an empty pack.</p>
+        </div>
+        <div className="locationForm">
+          <label>
+            City
+            <input value={city} onChange={event => setCity(event.target.value)} placeholder="Tulsa" />
+          </label>
+          <label>
+            State
+            <input value={state} onChange={event => setState(event.target.value)} placeholder="OK" maxLength={2} />
+          </label>
+          <label>
+            Zip
+            <input value={zip} onChange={event => setZip(event.target.value)} placeholder="74103" inputMode="numeric" />
+          </label>
+        </div>
+        <div className="endpointBox local">
+          <span>Local paid endpoint</span>
+          <code>{localPaidEndpoint}</code>
+          <CopyButton value={localPaidEndpoint}>Copy local endpoint</CopyButton>
+        </div>
+      </section>
+
       <section className="grid two">
         <article className="panel">
           <div className="panelTitle">
@@ -134,8 +175,8 @@ function App() {
           </ol>
           <div className="endpointBox">
             <span>Paid endpoint</span>
-            <code>{paidEndpoint}</code>
-            <CopyButton value={paidEndpoint}>Copy endpoint</CopyButton>
+            <code>{localPaidEndpoint}</code>
+            <CopyButton value={localPaidEndpoint}>Copy endpoint</CopyButton>
           </div>
         </article>
 
@@ -187,14 +228,14 @@ function App() {
 It returns real estate lead intelligence after a 0.05 USDC payment.
 
 Endpoint:
-${paidEndpoint}
+${localPaidEndpoint}
 
 Best fit:
 - AI agents
 - lead-gen automation
 - real estate SaaS workflows
 - x402/API marketplace buyers`}</pre>
-        <CopyButton value={`I launched a live x402 paid API on Base mainnet.\n\nIt returns real estate lead intelligence after a 0.05 USDC payment.\n\nEndpoint:\n${paidEndpoint}\n\nBest fit:\n- AI agents\n- lead-gen automation\n- real estate SaaS workflows\n- x402/API marketplace buyers`}>
+        <CopyButton value={`I launched a live x402 paid API on Base mainnet.\n\nIt returns real estate lead intelligence after a 0.05 USDC payment.\n\nEndpoint:\n${localPaidEndpoint}\n\nBest fit:\n- AI agents\n- lead-gen automation\n- real estate SaaS workflows\n- x402/API marketplace buyers`}>
           Copy sales message
         </CopyButton>
       </section>

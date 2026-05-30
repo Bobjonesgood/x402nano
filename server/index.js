@@ -228,6 +228,66 @@ function isProtectedResource(pathname) {
   return pathname === RESOURCE_PATH || pathname === LEGACY_RESOURCE_PATH;
 }
 
+function paymentResourceFromUrl(url) {
+  return `${url.pathname}${url.search}`;
+}
+
+function isPaymentResource(resource = "") {
+  try {
+    const parsed = new URL(resource, "https://x402nano.local");
+    return isProtectedResource(parsed.pathname);
+  } catch {
+    return resource === RESOURCE_PATH || resource === LEGACY_RESOURCE_PATH;
+  }
+}
+
+function locationFilterFromUrl(url) {
+  const city = url.searchParams.get("city")?.trim() ?? "";
+  const state = url.searchParams.get("state")?.trim() ?? "";
+  const zip = url.searchParams.get("zip")?.trim() ?? "";
+  const q = url.searchParams.get("q")?.trim() ?? "";
+
+  return {
+    active: Boolean(city || state || zip || q),
+    city,
+    state,
+    zip,
+    q
+  };
+}
+
+function normalizeSearch(value) {
+  return String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function leadSearchText(lead) {
+  return [
+    lead.businessName,
+    lead.industry,
+    lead.location,
+    lead.postalCode,
+    lead.zip,
+    lead.buyingIntent,
+    ...(lead.sourceEvidence ?? []),
+    ...(lead.sourceUrls ?? [])
+  ].join(" ");
+}
+
+function leadMatchesLocation(lead, filter) {
+  if (!filter.active) return true;
+
+  const haystack = normalizeSearch(leadSearchText(lead));
+  const checks = [filter.city, filter.state, filter.zip, filter.q]
+    .map(normalizeSearch)
+    .filter(Boolean);
+
+  return checks.every(term => haystack.includes(term));
+}
+
+function filterLeadPack(filter) {
+  return premiumLeadPack.filter(lead => leadMatchesLocation(lead, filter));
+}
+
 function logEvent(type, details = {}) {
   const event = {
     id: crypto.randomUUID(),
@@ -544,16 +604,21 @@ function adminAuthorized(req) {
   return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(ADMIN_TOKEN));
 }
 
-function leadPackAdminSummary() {
+function leadPackAdminSummary(filter = { active: false }) {
+  const records = filterLeadPack(filter);
+
   return {
     status: "ok",
     product: leadPackStatus(),
+    filter,
+    matchedRecords: records.length,
     leadNestAI: leadNestAIReadiness(leadNestAI),
-    records: premiumLeadPack.map(record => ({
+    records: records.map(record => ({
       id: record.id,
       businessName: record.businessName,
       industry: record.industry,
       location: record.location,
+      postalCode: record.postalCode ?? record.zip,
       estimatedJobValue: record.estimatedJobValue,
       buyingIntent: record.buyingIntent,
       painPoints: record.painPoints,
@@ -599,7 +664,7 @@ function pruneExpiredRequirements() {
   }
 }
 
-function paymentRequirements() {
+function paymentRequirements(resource = RESOURCE_PATH, filter = { active: false }) {
   pruneExpiredRequirements();
 
   const requirements = {
@@ -609,8 +674,10 @@ function paymentRequirements() {
     asset: ASSET,
     amount: PRICE_USDC,
     payTo: SELLER_ADDRESS,
-    resource: RESOURCE_PATH,
-    description: "LeadNestAI premium lead intelligence pack for sales agents and service businesses",
+    resource,
+    description: filter.active
+      ? `LeadNestAI local lead intelligence pack for ${[filter.city, filter.state, filter.zip, filter.q].filter(Boolean).join(" ")}`
+      : "LeadNestAI premium lead intelligence pack for sales agents and service businesses",
     mimeType: "application/json",
     maxTimeoutSeconds: Math.floor(PAYMENT_TTL_MS / 1000),
     expiresAt: new Date(Date.now() + PAYMENT_TTL_MS).toISOString(),
@@ -625,6 +692,7 @@ function paymentRequirements() {
     amount: requirements.amount,
     asset: requirements.asset,
     network: requirements.network,
+    filter,
     paymentMode: paymentProvider.mode
   });
   return requirements;
@@ -749,7 +817,7 @@ function validateRequirements(requirements) {
   if (requirements.asset !== ASSET) return "Unsupported payment asset.";
   if (requirements.amount !== PRICE_USDC) return "Incorrect payment amount.";
   if (requirements.payTo !== SELLER_ADDRESS) return "Incorrect seller address.";
-  if (requirements.resource !== RESOURCE_PATH) return "Payment was signed for a different resource.";
+  if (!isPaymentResource(requirements.resource)) return "Payment was signed for a different resource.";
   if (!requirements.nonce) return "Payment nonce is missing.";
   if (!requirementsMatchIssued(requirements)) return "Payment quote was not issued by this seller server.";
   if (new Date(requirements.expiresAt).getTime() < Date.now()) return "Payment quote expired.";
@@ -1023,7 +1091,7 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    return json(res, 200, leadPackAdminSummary());
+    return json(res, 200, leadPackAdminSummary(locationFilterFromUrl(url)));
   }
 
   if (req.method === "POST" && url.pathname === "/api/leadnestai/handoff") {
@@ -1138,11 +1206,26 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
+    const filter = locationFilterFromUrl(url);
+    const matchedLeadPack = filterLeadPack(filter);
+    if (filter.active && matchedLeadPack.length === 0) {
+      logEvent("lead_pack_filter_empty", {
+        resource: paymentResourceFromUrl(url),
+        filter
+      });
+      return json(res, 404, {
+        error: "No local leads available",
+        reason: "No active lead records currently match the requested city, state, zip, or query. Try a nearby market or broader filter.",
+        filter,
+        product: leadPackStatus()
+      });
+    }
+
     const payment = parsePaymentHeader(req.headers["x-payment"] ?? req.headers["payment-signature"]);
     const verification = await verifyPayment(payment);
 
     if (!verification.ok) {
-      const requirements = paymentRequirements();
+      const requirements = paymentRequirements(paymentResourceFromUrl(url), filter);
       const paymentRequired = officialPaymentRequired(req, requirements, verification.reason);
       const paymentRequiredHeader = encodePaymentRequiredHeader(paymentRequired);
 
@@ -1164,11 +1247,12 @@ const server = http.createServer(async (req, res) => {
 
     logEvent("lead_pack_unlocked", {
       receiptId: verification.receipt.id,
-      resource: RESOURCE_PATH,
-      records: premiumLeadPack.length
+      resource: paymentResourceFromUrl(url),
+      filter,
+      records: matchedLeadPack.length
     });
 
-    const leadNestAIHandoff = await submitUnlockedLeadsToLeadNestAI(verification.receipt, premiumLeadPack);
+    const leadNestAIHandoff = await submitUnlockedLeadsToLeadNestAI(verification.receipt, matchedLeadPack);
 
     const paymentResponse = {
       success: true,
@@ -1181,7 +1265,8 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, {
       status: "unlocked",
       receipt: publicReceipt(verification.receipt),
-      data: premiumLeadPack,
+      filter,
+      data: matchedLeadPack,
       leadNestAIHandoff
     }, {
       "PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse),
