@@ -150,6 +150,7 @@ async function refreshProductionLeadPack({ force = false } = {}) {
   const now = Date.now();
   if (!force && now - leadPackLastCheckedAt < LEAD_PACK_FILE_REFRESH_MS) return;
   leadPackLastCheckedAt = now;
+  leadPackWorkerStatus = await readLeadPackWorkerStatus();
 
   try {
     const stat = await fs.stat(LEAD_PACK_FILE);
@@ -317,13 +318,26 @@ function logEvent(type, details = {}) {
 
 let leadEngineRunning = false;
 
+function embeddedLeadEngineEnv() {
+  const env = { ...process.env };
+  const maxPages = Number(env.LEAD_ENGINE_MAX_PAGES ?? 0);
+
+  env.LEAD_ENGINE_MAX_PAGES = env.LEAD_ENGINE_EMBEDDED_MAX_PAGES
+    ?? (Number.isFinite(maxPages) && maxPages > 0 ? String(Math.min(maxPages, 8)) : "8");
+  env.LEAD_ENGINE_TIMEOUT_MS = env.LEAD_ENGINE_EMBEDDED_TIMEOUT_MS ?? env.LEAD_ENGINE_TIMEOUT_MS ?? "8000";
+  env.LEAD_ENGINE_RUN_TIMEOUT_MS = env.LEAD_ENGINE_EMBEDDED_RUN_TIMEOUT_MS ?? env.LEAD_ENGINE_RUN_TIMEOUT_MS ?? "120000";
+  env.AI_INFERENCE_TIMEOUT_MS = env.AI_INFERENCE_TIMEOUT_MS ?? "30000";
+
+  return env;
+}
+
 function runEmbeddedLeadEngine(trigger = "startup") {
   if (!LEAD_ENGINE_EMBEDDED || leadEngineRunning) return;
 
   leadEngineRunning = true;
   const child = spawn(process.execPath, [LEAD_ENGINE_SCRIPT], {
     cwd: path.resolve(__dirname, ".."),
-    env: process.env,
+    env: embeddedLeadEngineEnv(),
     stdio: ["ignore", "pipe", "pipe"]
   });
 
