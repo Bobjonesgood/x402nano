@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Bot, CheckCircle2, Copy, DatabaseZap, ExternalLink, Globe2, KeyRound, Radio, ReceiptText, ShieldCheck, WalletCards, Zap } from "lucide-react";
+import { Activity, Bot, CheckCircle2, Copy, DatabaseZap, ExternalLink, FileText, Globe2, MapPin, Radio, ReceiptText, ShieldCheck, WalletCards, Zap } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
 const paidEndpoint = "https://x402nano.onrender.com/api/lead-intelligence/premium-pack";
 const discoveryEndpoint = "https://x402nano.onrender.com/.well-known/x402.json";
+
+const packPlans = [
+  ["Starter Sample", "$29", "5 local lead briefs", "Best for testing one city or niche before buying a bigger pack."],
+  ["Market Pack", "$97", "25 local lead briefs", "A focused city, zip, county, or investor/agent prospecting pack."],
+  ["Market Sprint", "$197", "60 local lead briefs", "More coverage for agents, teams, brokers, or investors working a market."],
+  ["Custom Build", "$297", "priority local research", "A deeper market sprint with notes, categories, and outreach angles."]
+];
 
 function shortAddress(address) {
   if (!address) return "not configured";
@@ -56,6 +63,7 @@ function App() {
   }, [city, state, zip]);
 
   const localPaidEndpoint = `https://x402nano.onrender.com${localEndpointPath}`;
+  const targetMarket = [city.trim(), state.trim(), zip.trim()].filter(Boolean).join(", ") || "your local market";
 
   useEffect(() => {
     async function load() {
@@ -107,28 +115,28 @@ function App() {
         </div>
 
         <div className="heroCopy">
-          <span className="eyebrow">LeadNestAI x402 paid API</span>
-          <h1>Real estate lead intelligence that agents can buy with HTTP 402.</h1>
+          <span className="eyebrow">LeadNestAI local lead packs</span>
+          <h1>Qualified local real estate lead packs. No monthly subscription.</h1>
           <p>
-            x402nano is a live Base mainnet paid endpoint. Buyers and autonomous agents receive a payment challenge, settle 0.05 USDC, and unlock the active LeadNestAI lead pack.
+            Pick a city, zip, county, or niche. LeadNestAI turns public-source real estate signals into contact-ready lead briefs with evidence, suggested openers, confidence scores, and next steps.
           </p>
           <div className="heroActions">
             <a className="primaryButton" href={localPaidEndpoint} rel="noreferrer" target="_blank">
               <Zap size={18} />
-              Open Paid Endpoint
+              Preview Local Availability
             </a>
             <a className="secondaryButton" href={discoveryEndpoint} rel="noreferrer" target="_blank">
               <Globe2 size={18} />
-              View x402 Discovery
+              API Proof
             </a>
           </div>
         </div>
       </section>
 
       <section className="liveStatus">
-        <StatusCard icon={Radio} label="Paywall" value={protectedBy402 ? "HTTP 402 live" : "check required"} tone={protectedBy402 ? "good" : "warn"} />
+        <StatusCard icon={Radio} label="Availability" value={protectedBy402 ? "pack available" : challenge?.error ?? "checking"} tone={protectedBy402 ? "good" : "warn"} />
         <StatusCard icon={WalletCards} label="Settlement" value={mainnetLive ? "Base mainnet" : payment.mode ?? "loading"} tone={mainnetLive ? "good" : "warn"} />
-        <StatusCard icon={DatabaseZap} label="Lead pack" value={`${records} records`} />
+        <StatusCard icon={DatabaseZap} label="Active inventory" value={`${records} records`} />
         <StatusCard icon={ShieldCheck} label="LeadNestAI" value={leadNestAI.mode ?? "loading"} />
       </section>
 
@@ -136,9 +144,9 @@ function App() {
 
       <section className="locationPanel">
         <div>
-          <span className="eyebrow">local lead request</span>
-          <h2>Build a city or zip-specific x402 endpoint.</h2>
-          <p>Agents can request only the market they care about. If no active records match that city, state, or zip, the API returns no-inventory instead of charging for an empty pack.</p>
+          <span className="eyebrow">build your pack</span>
+          <h2>Request leads for the market you actually work.</h2>
+          <p>Enter a city, state, or zip to check local inventory. If no active records match that market, the system returns no-inventory instead of selling an empty pack.</p>
         </div>
         <div className="locationForm">
           <label>
@@ -161,20 +169,39 @@ function App() {
         </div>
       </section>
 
+      <section className="pricingPanel">
+        <div className="pricingIntro">
+          <span className="eyebrow">simple pricing</span>
+          <h2>Pay per pack. No subscription needed.</h2>
+          <p>Start small, test the quality, then buy a larger local market sprint when you are ready.</p>
+        </div>
+        <div className="priceGrid">
+          {packPlans.map(([name, price, volume, detail]) => (
+            <article className="priceCard" key={name}>
+              <span>{name}</span>
+              <strong>{price}</strong>
+              <b>{volume}</b>
+              <p>{detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="grid two">
         <article className="panel">
           <div className="panelTitle">
-            <Bot size={20} />
-            <h2>How Buyers Use It</h2>
+            <MapPin size={20} />
+            <h2>What Each Lead Brief Includes</h2>
           </div>
-          <ol className="steps">
-            <li>Discover the paid resource at <code>/.well-known/x402.json</code>.</li>
-            <li>Call the lead pack endpoint and receive <code>402 Payment Required</code>.</li>
-            <li>Submit an x402 payment payload for <code>0.05 USDC</code> on Base mainnet.</li>
-            <li>Receive the unlocked real estate lead intelligence pack and receipt.</li>
-          </ol>
+          <ul className="steps">
+            <li>Local market, city, zip, or niche context.</li>
+            <li>Public-source evidence so the lead is not a blind name.</li>
+            <li>Why the opportunity may be worth contacting.</li>
+            <li>Suggested opener and recommended next step.</li>
+            <li>Confidence score for quick prioritization.</li>
+          </ul>
           <div className="endpointBox">
-            <span>Paid endpoint</span>
+            <span>Local inventory proof endpoint</span>
             <code>{localPaidEndpoint}</code>
             <CopyButton value={localPaidEndpoint}>Copy endpoint</CopyButton>
           </div>
@@ -203,39 +230,38 @@ function App() {
       <section className="grid three">
         <article className="panel">
           <CheckCircle2 size={22} />
-          <h3>What Customers Get</h3>
-          <p>Structured business name, industry, location, buying-intent signal, pain points, source evidence, confidence score, and a recommended opener.</p>
+          <h3>Built For Real Estate</h3>
+          <p>Agents, brokers, teams, investors, and wholesalers who already understand prospecting and want better local research.</p>
         </article>
         <article className="panel">
           <Activity size={22} />
-          <h3>Who To Sell To</h3>
-          <p>AI-agent builders, real estate automation teams, CRM enrichment users, lead sellers, x402 marketplaces, and Base ecosystem builders.</p>
+          <h3>No Empty-Pack Sales</h3>
+          <p>If a requested city or zip has no matching active records, the API returns no-inventory instead of charging for an empty pack.</p>
         </article>
         <article className="panel">
-          <KeyRound size={22} />
-          <h3>Owner Preview</h3>
-          <p>The owner can inspect active leads through the protected admin preview route using <code>LEAD_PACK_ADMIN_TOKEN</code>.</p>
+          <FileText size={22} />
+          <h3>API Under The Hood</h3>
+          <p>x402 stays as the proof and machine-payment layer. Human buyers can still buy simple local packs without needing to understand the protocol.</p>
         </article>
       </section>
 
       <section className="launchPanel">
         <div>
           <span className="eyebrow">sales message</span>
-          <h2>Copy this when pitching builders.</h2>
+          <h2>Copy this when pitching real estate buyers.</h2>
         </div>
-        <pre>{`I launched a live x402 paid API on Base mainnet.
+        <pre>{`I built a local real estate lead intelligence service.
 
-It returns real estate lead intelligence after a 0.05 USDC payment.
+No subscription. You pick a city, zip, county, or niche and I build a public-source lead pack with:
 
-Endpoint:
-${localPaidEndpoint}
+- why each lead may be worth contacting
+- source evidence
+- suggested opener
+- confidence score
+- next step
 
-Best fit:
-- AI agents
-- lead-gen automation
-- real estate SaaS workflows
-- x402/API marketplace buyers`}</pre>
-        <CopyButton value={`I launched a live x402 paid API on Base mainnet.\n\nIt returns real estate lead intelligence after a 0.05 USDC payment.\n\nEndpoint:\n${localPaidEndpoint}\n\nBest fit:\n- AI agents\n- lead-gen automation\n- real estate SaaS workflows\n- x402/API marketplace buyers`}>
+I’m testing ${targetMarket} now. Want to see a sample pack?`}</pre>
+        <CopyButton value={`I built a local real estate lead intelligence service.\n\nNo subscription. You pick a city, zip, county, or niche and I build a public-source lead pack with:\n\n- why each lead may be worth contacting\n- source evidence\n- suggested opener\n- confidence score\n- next step\n\nI’m testing ${targetMarket} now. Want to see a sample pack?`}>
           Copy sales message
         </CopyButton>
       </section>
