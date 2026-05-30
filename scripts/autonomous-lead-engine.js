@@ -483,21 +483,24 @@ async function enrichWithAi(pages) {
   const apiUrl = plainUrl(process.env.AI_INFERENCE_URL);
   const apiKey = process.env.AI_API_KEY?.trim();
   const model = process.env.AI_MODEL?.trim() || "llama-3.1-8b-instant";
+  const aiMaxPages = asPositiveInt(process.env.AI_INFERENCE_MAX_PAGES, 4);
+  const aiMaxPageTextChars = asPositiveInt(process.env.AI_INFERENCE_MAX_PAGE_TEXT_CHARS, 1200);
 
   if (!apiUrl || !apiKey || pages.length === 0) {
     return pages.map(page => heuristicLead(page));
   }
 
+  const pagesForAi = pages.slice(0, aiMaxPages);
   const prompt = [
     "Return only valid JSON: an array of qualified real estate lead records.",
     "Use only the supplied public page evidence. Do not invent private contact data.",
     "Each record must include id, businessName, industry, location, estimatedJobValue, buyingIntent, painPoints, recommendedOpener, confidenceScore, sourceType, sourceUrls, sourceEvidence, reviewedAt, contactPolicy.",
     "Make location as local as the evidence allows. Prefer City, ST. Include postalCode when a public source explicitly shows a zip code.",
     "Prefer businesses with clear buyer/seller/property inquiry or client-intake signals.",
-    JSON.stringify(pages.map(page => ({
+    JSON.stringify(pagesForAi.map(page => ({
       url: page.url,
       title: page.title,
-      text: page.text.slice(0, 5000)
+      text: page.text.slice(0, aiMaxPageTextChars)
     })))
   ].join("\n\n");
 
@@ -534,7 +537,9 @@ async function enrichWithAi(pages) {
     const content = body.choices?.[0]?.message?.content ?? "";
     const parsed = JSON.parse(content);
     const records = Array.isArray(parsed) ? parsed : parsed.leads ?? parsed.records ?? [];
-    return records.map((record, index) => normalizeLead(record, pages[index] ?? pages[0])).filter(requiredFieldsOk);
+    const aiRecords = records.map((record, index) => normalizeLead(record, pagesForAi[index] ?? pagesForAi[0])).filter(requiredFieldsOk);
+    const fallbackRecords = pages.slice(aiRecords.length).map(page => heuristicLead(page));
+    return [...aiRecords, ...fallbackRecords];
   } catch (error) {
     console.log(`warn ai enrichment failed, using heuristic fallback: ${error.message}`);
     return pages.map(page => heuristicLead(page));
