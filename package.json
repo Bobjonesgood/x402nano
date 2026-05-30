@@ -10,7 +10,7 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "start": "node server/index.js",
-    "render:start": "concurrently -k -n leadengine,web \"npm:leadengine:loop\" \"npm:start\"",
+    "render:start": "npm:start",
     "agent:buyer": "node scripts/agent-buyer.js",
     "smoke": "node scripts/smoke-test.js",
     "agent:real": "node scripts/real-x402-buyer.js",

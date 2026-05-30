@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
@@ -31,11 +32,14 @@ const LEAD_PACK_FILE = process.env.LEAD_PACK_FILE
   ? path.resolve(process.env.LEAD_PACK_FILE)
   : path.resolve(__dirname, "../data/production-lead-pack.runtime.json");
 const LEAD_PACK_FILE_REFRESH_MS = Number(process.env.LEAD_PACK_FILE_REFRESH_MS ?? 30000);
+const LEAD_ENGINE_EMBEDDED = process.env.LEAD_ENGINE_EMBEDDED !== "false";
+const LEAD_ENGINE_INTERVAL_MS = Number(process.env.LEAD_ENGINE_INTERVAL_MS ?? 6 * 60 * 60 * 1000);
 const PAYMENT_TTL_MS = 5 * 60 * 1000;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 90;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.resolve(__dirname, "../dist");
+const LEAD_ENGINE_SCRIPT = path.resolve(__dirname, "../scripts/autonomous-lead-engine.js");
 const EVM_ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
 
 const demoLeadPack = [
@@ -309,6 +313,44 @@ function logEvent(type, details = {}) {
   eventLog.unshift(event);
   eventLog.splice(100);
   return event;
+}
+
+let leadEngineRunning = false;
+
+function runEmbeddedLeadEngine(trigger = "startup") {
+  if (!LEAD_ENGINE_EMBEDDED || leadEngineRunning) return;
+
+  leadEngineRunning = true;
+  const child = spawn(process.execPath, [LEAD_ENGINE_SCRIPT], {
+    cwd: path.resolve(__dirname, ".."),
+    env: process.env,
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  logEvent("lead_engine_started", { trigger });
+  child.stdout.on("data", data => {
+    for (const line of String(data).split(/\r?\n/).filter(Boolean)) {
+      console.log(`[leadengine] ${line}`);
+    }
+  });
+  child.stderr.on("data", data => {
+    for (const line of String(data).split(/\r?\n/).filter(Boolean)) {
+      console.error(`[leadengine] ${line}`);
+    }
+  });
+  child.on("exit", code => {
+    leadEngineRunning = false;
+    logEvent(code === 0 ? "lead_engine_finished" : "lead_engine_failed", {
+      trigger,
+      code
+    });
+    refreshProductionLeadPack({ force: true }).catch(error => {
+      logEvent("lead_pack_refresh_failed", {
+        source: LEAD_PACK_FILE,
+        reason: error.message
+      });
+    });
+  });
 }
 
 function canonicalPayment(requirements, payer = BUYER_ADDRESS) {
@@ -1303,4 +1345,8 @@ server.listen(PORT, HOST, () => {
   }
 
   console.log(`x402 seller server listening on http://${HOST}:${PORT}`);
+  runEmbeddedLeadEngine("startup");
+  if (LEAD_ENGINE_EMBEDDED) {
+    setInterval(() => runEmbeddedLeadEngine("interval"), LEAD_ENGINE_INTERVAL_MS);
+  }
 });
