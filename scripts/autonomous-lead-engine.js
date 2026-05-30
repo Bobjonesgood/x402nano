@@ -326,8 +326,9 @@ async function crawlSources(sourceUrls, options) {
   const seen = new Set();
   const pages = [];
   const robots = new Map();
+  const deadline = Date.now() + options.runTimeoutMs;
 
-  while (queue.length > 0 && pages.length < options.maxPages) {
+  while (queue.length > 0 && pages.length < options.maxPages && Date.now() < deadline) {
     const url = queue.shift();
     if (!url || seen.has(url)) continue;
     seen.add(url);
@@ -366,6 +367,10 @@ async function crawlSources(sourceUrls, options) {
     }
   }
 
+  if (queue.length > 0 && Date.now() >= deadline) {
+    console.log(`warn crawl deadline reached after ${Math.round(options.runTimeoutMs / 1000)} seconds; using ${pages.length} collected pages`);
+  }
+
   return pages;
 }
 
@@ -401,22 +406,31 @@ async function enrichWithAi(pages) {
   ].join("\n\n");
 
   try {
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: "You clean and qualify public-source real estate business leads for B2B sales teams." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.2,
-        response_format: { type: "json_object" }
-      })
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), asPositiveInt(process.env.AI_INFERENCE_TIMEOUT_MS, 30000));
+    let response;
+
+    try {
+      response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: "You clean and qualify public-source real estate business leads for B2B sales teams." },
+            { role: "user", content: prompt }
+          ],
+          temperature: 0.2,
+          response_format: { type: "json_object" }
+        }),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const body = await response.json();
     if (!response.ok) throw new Error(body.error?.message ?? `AI HTTP ${response.status}`);
@@ -490,6 +504,7 @@ async function runOnce() {
     maxPages,
     delayMs: asPositiveInt(process.env.LEAD_ENGINE_DELAY_MS, 1500),
     timeoutMs: asPositiveInt(process.env.LEAD_ENGINE_TIMEOUT_MS, 12000),
+    runTimeoutMs: asPositiveInt(process.env.LEAD_ENGINE_RUN_TIMEOUT_MS, 180000),
     maxPageTextChars: asPositiveInt(process.env.LEAD_ENGINE_MAX_PAGE_TEXT_CHARS, 9000),
     followLinks: process.env.LEAD_ENGINE_FOLLOW_LINKS !== "false"
   };
