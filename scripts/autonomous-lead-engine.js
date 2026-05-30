@@ -121,6 +121,8 @@ function decodeHtml(value) {
     .replace(/&quot;/g, '"')
     .replace(/&#8211;|&ndash;/g, "-")
     .replace(/&#8212;|&mdash;/g, "-")
+    .replace(/&#x27;|&apos;/g, "'")
+    .replace(/&raquo;/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -161,14 +163,39 @@ function signalScore(text) {
   return Math.min(92, 58 + industryHits * 7 + fitHits * 3);
 }
 
-function inferIndustry(text) {
-  const lower = text.toLowerCase();
+function inferIndustry(text, businessName = "") {
+  const combined = `${businessName} ${text}`;
+  const lower = combined.toLowerCase();
+  if (/realty|realtors?|brokerage|broker\/ realtor|broker\/realtor|real estate agents?|real estate experts|keller williams|coldwell banker|gumtree|kiamie|magee|olr realty|tm realtors/i.test(combined)) {
+    if (lower.includes("investment") || lower.includes("commercial real estate")) return "Real estate sales and investment brokerage";
+    return "Real estate sales and brokerage";
+  }
   if (lower.includes("property management")) return "Property management";
+  if (lower.includes("commercial real estate")) return "Commercial real estate";
   if (lower.includes("mortgage")) return "Mortgage and lending";
   if (lower.includes("title")) return "Title and closing services";
-  if (lower.includes("commercial real estate")) return "Commercial real estate";
   if (lower.includes("home inspection")) return "Home inspection";
   return "Real estate sales and brokerage";
+}
+
+function cleanBusinessName(name, url = "") {
+  let cleaned = decodeHtml(name)
+    .replace(/\s+including\b.*$/i, "")
+    .replace(/,\s*your\b.*$/i, "")
+    .replace(/\s+-\s+your\b.*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (/^coldwell banker$/i.test(cleaned) && /cbtupelo/i.test(url)) cleaned = "Coldwell Banker Southern Real Estate";
+  if (/^oxford,\s*ms real estate/i.test(cleaned) && /nroxford/i.test(url)) cleaned = "Neighborhood Realty Oxford";
+  if (/^gumtree realty/i.test(cleaned)) cleaned = "GumTree Realty";
+  if (/^keller williams tupelo/i.test(cleaned)) cleaned = "Keller Williams Tupelo";
+  return cleaned.slice(0, 90);
+}
+
+function evidenceIsWeak(sentence) {
+  const lower = sentence.toLowerCase();
+  return /checkbox|expressly consent|opt in|permission to contact|terms of use|privacy policy|idx|copyright|all rights reserved|skip to content|realty tips|newest properties|read more buyer|absolute pleasure|homeownership dreams|checkbox|testimonial|my realtor|answered all of my questions|highly recommend|friends and family|readily available|very knowledgeable|took very good care|recommend contacting|home inspector|worked with several|open 9am|subscribe|no results/i.test(lower);
 }
 
 function inferBusinessName(title, url) {
@@ -210,6 +237,12 @@ function inferBetterBusinessName(title, url) {
 }
 
 function inferLocation(text) {
+  const knownNorthMississippiCities = ["Tupelo", "Oxford", "Southaven", "Hernando", "Starkville", "Columbus", "Saltillo"];
+  for (const city of knownNorthMississippiCities) {
+    const cityPattern = new RegExp(`\\b${city}\\b\\s*,?\\s*MS\\b`, "i");
+    if (cityPattern.test(text)) return `${city}, MS`;
+  }
+
   const cityState = text.match(/\b([A-Z][a-zA-Z .'-]{2,40}),\s*([A-Z]{2})\b/);
   return cityState ? `${cityState[1].trim()}, ${cityState[2]}` : "Public web source";
 }
@@ -218,27 +251,52 @@ function evidenceFromText(text) {
   const sentences = text
     .split(/(?<=[.!?])\s+/)
     .map(sentence => sentence.trim())
-    .filter(sentence => sentence.length >= 45 && sentence.length <= 220);
-  const evidence = sentences.filter(sentence => {
+    .filter(sentence => sentence.length >= 45 && sentence.length <= 240)
+    .filter(sentence => !evidenceIsWeak(sentence));
+  const strongEvidence = sentences.filter(sentence => {
     const lower = sentence.toLowerCase();
-    return [...realEstateTerms, ...serviceFitTerms].some(term => lower.includes(term));
+    return /broker|realtor|real estate|property management|investment|commercial|residential|agents?|listings?|buyer|seller|contact|call|email|office/.test(lower);
   });
-  return (evidence.length ? evidence : sentences).slice(0, 3);
+  const evidence = strongEvidence.length ? strongEvidence : sentences;
+  const seen = new Set();
+  return evidence.filter(sentence => {
+    const key = sentence.toLowerCase().replace(/[^\w]+/g, " ").trim();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 3);
 }
 
 function leadId(name, url) {
   return `auto_public_${crypto.createHash("sha256").update(`${name}|${url}`).digest("hex").slice(0, 12)}`;
 }
 
+function recommendedOpenerFor(record) {
+  const name = cleanBusinessName(record.businessName || "your team");
+  const industry = String(record.industry || "").toLowerCase();
+
+  if (industry.includes("property management")) {
+    return `I saw ${name} handles property management and real estate inquiries. Are rental, owner, and buyer/seller leads all getting routed and followed up without anything slipping through?`;
+  }
+
+  if (industry.includes("investment") || industry.includes("commercial")) {
+    return `I saw ${name} works across residential, investment, or commercial real estate. Would a tighter follow-up system help separate serious opportunities from casual inquiries faster?`;
+  }
+
+  return `I saw ${name} is actively positioned for local buyer and seller inquiries. Are new real estate leads getting contacted fast enough when agents are busy with showings and closings?`;
+}
+
 function heuristicLead(page) {
-  const name = inferBetterBusinessName(page.title, page.url);
-  const evidence = evidenceFromText(page.text);
-  const confidenceScore = signalScore(page.text);
+  const name = cleanBusinessName(inferBetterBusinessName(page.title, page.url), page.url);
+  const combinedText = `${page.title}. ${page.text}`;
+  const evidence = evidenceFromText(combinedText);
+  const confidenceScore = Math.min(signalScore(combinedText), evidence.length >= 2 ? 92 : 86);
+  const industry = inferIndustry(combinedText, name);
 
   return {
     id: leadId(name, page.url),
     businessName: name,
-    industry: inferIndustry(page.text),
+    industry,
     location: inferLocation(page.text),
     estimatedJobValue: "Real estate lead flow and follow-up opportunity; qualify deal value before sale.",
     buyingIntent: "Public fit signal from a real estate business web page with intake, contact, listing, or service evidence.",
@@ -247,7 +305,7 @@ function heuristicLead(page) {
       "lead routing across public contact channels",
       "follow-up consistency after buyer or seller interest"
     ],
-    recommendedOpener: "I noticed your public site is built around real estate inquiries and client intake. Are new buyer, seller, or property leads followed up as quickly as you want?",
+    recommendedOpener: recommendedOpenerFor({ businessName: name, industry }),
     confidenceScore,
     sourceType: "public real estate web page",
     sourceUrls: [page.url],
@@ -287,12 +345,20 @@ function normalizeLead(record, fallbackPage) {
     ...heuristicLead(fallbackPage),
     ...record
   };
+  const fallback = heuristicLead(fallbackPage);
+  const combinedText = `${fallbackPage.title}. ${fallbackPage.text}`;
 
+  merged.businessName = cleanBusinessName(merged.businessName || fallback.businessName, fallbackPage.url);
+  merged.industry = inferIndustry(combinedText, merged.businessName);
   merged.id = merged.id || leadId(merged.businessName, fallbackPage.url);
-  merged.confidenceScore = Math.max(0, Math.min(100, Number(merged.confidenceScore) || signalScore(fallbackPage.text)));
-  merged.painPoints = Array.isArray(merged.painPoints) ? merged.painPoints.slice(0, 5) : heuristicLead(fallbackPage).painPoints;
+  merged.painPoints = Array.isArray(merged.painPoints) ? merged.painPoints.slice(0, 5) : fallback.painPoints;
   merged.sourceUrls = Array.isArray(merged.sourceUrls) && merged.sourceUrls.length ? merged.sourceUrls : [fallbackPage.url];
-  merged.sourceEvidence = Array.isArray(merged.sourceEvidence) && merged.sourceEvidence.length ? merged.sourceEvidence.slice(0, 5) : evidenceFromText(fallbackPage.text);
+  const cleanEvidence = evidenceFromText(combinedText);
+  const submittedEvidence = Array.isArray(merged.sourceEvidence) ? merged.sourceEvidence.filter(sentence => !evidenceIsWeak(String(sentence))) : [];
+  merged.sourceEvidence = (cleanEvidence.length ? cleanEvidence : submittedEvidence).slice(0, 5);
+  merged.confidenceScore = Math.max(0, Math.min(100, Number(merged.confidenceScore) || signalScore(combinedText)));
+  if (merged.sourceEvidence.length < 2) merged.confidenceScore = Math.min(merged.confidenceScore, 86);
+  merged.recommendedOpener = recommendedOpenerFor(merged);
   merged.reviewedAt = merged.reviewedAt || today();
   merged.contactPolicy = merged.contactPolicy || "Use public business contact routes only. This record shows fit evidence, not a confirmed buying decision.";
 
