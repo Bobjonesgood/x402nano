@@ -538,7 +538,10 @@ async function enrichWithAi(pages) {
     const parsed = JSON.parse(content);
     const records = Array.isArray(parsed) ? parsed : parsed.leads ?? parsed.records ?? [];
     const aiRecords = records.map((record, index) => normalizeLead(record, pagesForAi[index] ?? pagesForAi[0])).filter(requiredFieldsOk);
-    const fallbackRecords = pages.slice(aiRecords.length).map(page => heuristicLead(page));
+    const aiSourceUrls = new Set(aiRecords.flatMap(record => record.sourceUrls ?? []));
+    const fallbackRecords = pages
+      .filter(page => !aiSourceUrls.has(page.url))
+      .map(page => heuristicLead(page));
     return [...aiRecords, ...fallbackRecords];
   } catch (error) {
     console.log(`warn ai enrichment failed, using heuristic fallback: ${error.message}`);
