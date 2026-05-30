@@ -42,6 +42,8 @@ const serviceFitTerms = [
   "crm"
 ];
 
+const unsupportedUrlPattern = /\.(pdf|zip|docx?|xlsx?|csv)(?:[?#].*)?$/i;
+
 function envList(name) {
   const value = process.env[name]?.trim();
   if (!value) return [];
@@ -331,6 +333,11 @@ async function crawlSources(sourceUrls, options) {
     seen.add(url);
 
     try {
+      if (unsupportedUrlPattern.test(url)) {
+        console.log(`skip unsupported ${url}`);
+        continue;
+      }
+
       if (!(await allowedByRobots(url, robots))) {
         console.log(`skip robots ${url}`);
         continue;
