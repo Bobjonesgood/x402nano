@@ -622,11 +622,13 @@ async function runOnce() {
   console.log(`output: ${outputFile}`);
 
   const pages = await crawlSources(sourceUrls, options);
+  const baseline = pages.map(page => heuristicLead(page));
   const enriched = await enrichWithAi(pages);
   const existing = process.env.LEAD_ENGINE_MERGE_EXISTING === "true" ? await readExisting(outputFile) : [];
-  const records = dedupeLeads([...enriched, ...existing])
+  const records = dedupeLeads([...baseline, ...enriched, ...existing])
     .filter(record => requiredFieldsOk(record) && record.confidenceScore >= minConfidence)
     .slice(0, packLimit);
+  console.log(`baseline records: ${baseline.length}`);
 
   if (records.length === 0) {
     await writePackStatus(outputFile, {
