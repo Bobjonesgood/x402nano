@@ -539,7 +539,6 @@ async function enrichWithAi(pages) {
     const records = Array.isArray(parsed) ? parsed : parsed.leads ?? parsed.records ?? [];
     const aiRecords = records.map((record, index) => normalizeLead(record, pagesForAi[index] ?? pagesForAi[0])).filter(requiredFieldsOk);
     const fallbackRecords = pages
-      .slice(pagesForAi.length)
       .map(page => heuristicLead(page));
     console.log(`ai enriched records: ${aiRecords.length}; fallback records: ${fallbackRecords.length}`);
     return [...aiRecords, ...fallbackRecords];
