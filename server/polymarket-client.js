@@ -20,6 +20,18 @@ function parseJsonArray(value, fallback = []) {
   }
 }
 
+function cleanText(value) {
+  return String(value ?? "")
+    .replace(/Â°F/g, "°F")
+    .replace(/Â°C/g, "°C")
+    .replace(/Â®/g, "®")
+    .replace(/â€™/g, "'")
+    .replace(/â€œ|â€/g, "\"")
+    .replace(/â€“|â€”/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function firstNumber(...values) {
   for (const value of values) {
     const number = Number(value);
@@ -47,10 +59,10 @@ function normalizeMarket(raw) {
   return {
     id: String(raw.id ?? raw.conditionId ?? raw.slug ?? ""),
     slug: raw.slug ?? "",
-    question: raw.question ?? raw.title ?? raw.name ?? "",
-    title: raw.title ?? raw.question ?? raw.name ?? "",
-    description: raw.description ?? "",
-    category: raw.category ?? raw.event?.category ?? "",
+    question: cleanText(raw.question ?? raw.title ?? raw.name ?? ""),
+    title: cleanText(raw.title ?? raw.question ?? raw.name ?? ""),
+    description: cleanText(raw.description ?? ""),
+    category: cleanText(raw.category ?? raw.event?.category ?? ""),
     active: Boolean(raw.active ?? raw.isActive ?? false),
     closed: Boolean(raw.closed ?? raw.isClosed ?? false),
     endDate: raw.endDate ?? raw.end_date ?? raw.endDateIso ?? null,
@@ -85,16 +97,24 @@ async function gammaGet(pathname, params = {}) {
 }
 
 export async function fetchTrendingMarkets({ limit = asPositiveInt(process.env.POLYMARKET_MARKET_LIMIT, 10) } = {}) {
+  const poolLimit = Math.max(limit * 5, asPositiveInt(process.env.POLYMARKET_MARKET_POOL_LIMIT, 50));
+  const minVolume = Number(process.env.POLYMARKET_MIN_VOLUME ?? 100);
+  const minLiquidity = Number(process.env.POLYMARKET_MIN_LIQUIDITY ?? 500);
   const body = await gammaGet("/markets", {
     active: true,
     closed: false,
-    limit,
+    limit: poolLimit,
     order: "volume",
     ascending: false
   });
 
   const markets = Array.isArray(body) ? body : body?.markets ?? body?.data ?? [];
-  return markets.map(normalizeMarket).filter(market => market.slug && market.question);
+  return markets
+    .map(normalizeMarket)
+    .filter(market => market.slug && market.question && market.active && !market.closed)
+    .filter(market => (market.volume ?? 0) >= minVolume || (market.liquidity ?? 0) >= minLiquidity)
+    .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0) || (b.liquidity ?? 0) - (a.liquidity ?? 0))
+    .slice(0, limit);
 }
 
 export async function fetchMarketBySlug(slug) {
