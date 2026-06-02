@@ -1,3 +1,5 @@
+import { cleanText as normalizeText } from "./text-normalizer.js";
+
 const DEFAULT_GAMMA_URL = "https://gamma-api.polymarket.com";
 
 function gammaBaseUrl() {
@@ -46,8 +48,8 @@ function normalizeMarket(raw) {
   const tokens = Array.isArray(raw.tokens) ? raw.tokens : [];
 
   const normalizedOutcomes = outcomes.length
-    ? outcomes.map(outcome => typeof outcome === "string" ? outcome : outcome?.outcome ?? outcome?.name).filter(Boolean)
-    : tokens.map(token => token.outcome ?? token.name).filter(Boolean);
+    ? outcomes.map(outcome => normalizeText(typeof outcome === "string" ? outcome : outcome?.outcome ?? outcome?.name)).filter(Boolean)
+    : tokens.map(token => normalizeText(token.outcome ?? token.name)).filter(Boolean);
 
   const prices = {};
   normalizedOutcomes.forEach((outcome, index) => {
@@ -58,11 +60,11 @@ function normalizeMarket(raw) {
 
   return {
     id: String(raw.id ?? raw.conditionId ?? raw.slug ?? ""),
-    slug: raw.slug ?? "",
-    question: cleanText(raw.question ?? raw.title ?? raw.name ?? ""),
-    title: cleanText(raw.title ?? raw.question ?? raw.name ?? ""),
-    description: cleanText(raw.description ?? ""),
-    category: cleanText(raw.category ?? raw.event?.category ?? ""),
+    slug: normalizeText(raw.slug ?? ""),
+    question: normalizeText(raw.question ?? raw.title ?? raw.name ?? ""),
+    title: normalizeText(raw.title ?? raw.question ?? raw.name ?? ""),
+    description: normalizeText(raw.description ?? ""),
+    category: normalizeText(raw.category ?? raw.event?.category ?? ""),
     active: Boolean(raw.active ?? raw.isActive ?? false),
     closed: Boolean(raw.closed ?? raw.isClosed ?? false),
     endDate: raw.endDate ?? raw.end_date ?? raw.endDateIso ?? null,

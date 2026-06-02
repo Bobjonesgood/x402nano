@@ -1,3 +1,5 @@
+import { cleanText as normalizeText } from "./text-normalizer.js";
+
 const DEFAULT_DISCLAIMER = "Informational only. Not trading, betting, or financial advice. No buy/sell recommendation, no custody, and no trade execution.";
 
 function formatNumber(value) {
@@ -51,8 +53,8 @@ export function buildMarketBrief(market) {
   const liquidity = formatNumber(market.liquidity);
   const status = market.closed ? "closed" : market.active ? "active" : "unknown";
   const leader = leadingOutcome(market.prices);
-  const title = cleanText(market.title || market.question);
-  const question = cleanText(market.question);
+  const title = normalizeText(market.title || market.question);
+  const question = normalizeText(market.question);
 
   return {
     status: "ok",
@@ -63,7 +65,7 @@ export function buildMarketBrief(market) {
       slug: market.slug,
       title,
       question,
-      category: market.category,
+      category: normalizeText(market.category),
       status,
       endDate: market.endDate,
       url: market.url
@@ -118,9 +120,9 @@ export function buildMarketBrief(market) {
 export function marketPreview(market) {
   return {
     slug: market.slug,
-    title: market.title || market.question,
-    question: market.question,
-    category: market.category,
+    title: normalizeText(market.title || market.question),
+    question: normalizeText(market.question),
+    category: normalizeText(market.category),
     status: market.closed ? "closed" : market.active ? "active" : "unknown",
     volume: formatNumber(market.volume),
     liquidity: formatNumber(market.liquidity),
