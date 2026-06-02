@@ -8,7 +8,9 @@ import { encodePaymentRequiredHeader, encodePaymentResponseHeader } from "@x402/
 import { DEFAULT_STABLECOINS } from "@x402/evm";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { buildLeadHandoffPayload, leadNestAIConfig, leadNestAIReadiness, submitLeadToLeadNestAI } from "./leadnestai-client.js";
+import { buildMarketBrief, marketPreview } from "./market-briefs.js";
 import { createFacilitatorProvider, createSandboxProvider } from "./payment-providers.js";
+import { fetchMarketBySlug, fetchTrendingMarkets, polymarketStatus } from "./polymarket-client.js";
 
 const PORT = Number(process.env.PORT ?? 4021);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -25,8 +27,10 @@ const RELEASE_NAME = process.env.RELEASE_NAME ?? "LeadNestAI Machine-Payable Lea
 const PAYMENT_HEADER = "X-PAYMENT";
 const RESOURCE_PATH = "/api/lead-intelligence/premium-pack";
 const LEGACY_RESOURCE_PATH = "/api/premium-leads";
+const MARKET_BRIEF_PATH = "/api/markets/brief";
 const ADMIN_LEAD_PACK_PATH = "/api/admin/lead-pack";
 const ADMIN_TOKEN = process.env.LEAD_PACK_ADMIN_TOKEN?.trim() ?? "";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LEAD_PACK_MODE = process.env.LEAD_PACK_MODE ?? "demo";
 const LEAD_PACK_FILE = process.env.LEAD_PACK_FILE
   ? path.resolve(process.env.LEAD_PACK_FILE)
@@ -34,10 +38,10 @@ const LEAD_PACK_FILE = process.env.LEAD_PACK_FILE
 const LEAD_PACK_FILE_REFRESH_MS = Number(process.env.LEAD_PACK_FILE_REFRESH_MS ?? 30000);
 const LEAD_ENGINE_EMBEDDED = process.env.LEAD_ENGINE_EMBEDDED !== "false";
 const LEAD_ENGINE_INTERVAL_MS = Number(process.env.LEAD_ENGINE_INTERVAL_MS ?? 6 * 60 * 60 * 1000);
+const MARKET_BRIEF_ENABLED = process.env.MARKET_BRIEF_ENABLED !== "false";
 const PAYMENT_TTL_MS = 5 * 60 * 1000;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 90;
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.resolve(__dirname, "../dist");
 const LEAD_ENGINE_SCRIPT = path.resolve(__dirname, "../scripts/autonomous-lead-engine.js");
 const EVM_ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
@@ -241,7 +245,15 @@ const eventLog = [];
 const leadNestAI = leadNestAIConfig();
 
 function isProtectedResource(pathname) {
+  return pathname === RESOURCE_PATH || pathname === LEGACY_RESOURCE_PATH || pathname === MARKET_BRIEF_PATH;
+}
+
+function isLeadPackResource(pathname) {
   return pathname === RESOURCE_PATH || pathname === LEGACY_RESOURCE_PATH;
+}
+
+function isMarketBriefResource(pathname) {
+  return pathname === MARKET_BRIEF_PATH;
 }
 
 function paymentResourceFromUrl(url) {
@@ -733,6 +745,7 @@ function pruneExpiredRequirements() {
 
 function paymentRequirements(resource = RESOURCE_PATH, filter = { active: false }) {
   pruneExpiredRequirements();
+  const isMarketBrief = resource.startsWith(MARKET_BRIEF_PATH);
 
   const requirements = {
     x402Version: PAYMENT_MODE === "facilitator" ? "1" : "sandbox-1",
@@ -742,7 +755,9 @@ function paymentRequirements(resource = RESOURCE_PATH, filter = { active: false 
     amount: PRICE_USDC,
     payTo: SELLER_ADDRESS,
     resource,
-    description: filter.active
+    description: isMarketBrief
+      ? "x402nano read-only Polymarket market intelligence brief. Informational only; no trading, betting, or financial advice."
+      : filter.active
       ? `LeadNestAI local lead intelligence pack for ${[filter.city, filter.state, filter.zip, filter.q].filter(Boolean).join(" ")}`
       : "LeadNestAI premium lead intelligence pack for sales agents and service businesses",
     mimeType: "application/json",
@@ -809,6 +824,7 @@ function facilitatorAssetRequirements(requirements) {
 
 function officialPaymentRequired(req, requirements, error = "Payment required") {
   const origin = publicOrigin(req);
+  const isMarketBrief = requirements.resource.startsWith(MARKET_BRIEF_PATH);
   const environmentTag = paymentProvider.mode === "facilitator" && requirements.network === "eip155:8453"
     ? "mainnet"
     : requirements.network === "eip155:84532"
@@ -820,10 +836,14 @@ function officialPaymentRequired(req, requirements, error = "Payment required") 
     error,
     resource: {
       url: `${origin}${requirements.resource}`,
-      description: "Machine-payable lead intelligence pack for service-business sales automation. Reviewed public-source fit signals unlock after verified x402 payment.",
+      description: isMarketBrief
+        ? "Machine-payable read-only Polymarket market intelligence brief. Informational only; no trading, betting, or financial advice."
+        : "Machine-payable lead intelligence pack for service-business sales automation. Reviewed public-source fit signals unlock after verified x402 payment.",
       mimeType: requirements.mimeType,
       serviceName: API_NAME,
-      tags: ["leads", "agents", "x402", "lead-intelligence", "service-business", environmentTag]
+      tags: isMarketBrief
+        ? ["polymarket", "market-intelligence", "x402", "base", "read-only", environmentTag]
+        : ["leads", "agents", "x402", "lead-intelligence", "service-business", environmentTag]
     },
     accepts: [officialPaymentRequirements(requirements)],
     extensions: bazaarLeadPackDiscovery
@@ -1139,6 +1159,40 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
+  if (req.method === "GET" && url.pathname === "/api/markets/status") {
+    if (!MARKET_BRIEF_ENABLED) return json(res, 404, { error: "Market brief API is disabled." });
+    try {
+      return json(res, 200, await polymarketStatus());
+    } catch (error) {
+      return json(res, 502, {
+        status: "error",
+        source: "polymarket:gamma",
+        reason: error.message
+      });
+    }
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/markets/trending") {
+    if (!MARKET_BRIEF_ENABLED) return json(res, 404, { error: "Market brief API is disabled." });
+    try {
+      const limit = Math.min(Number(url.searchParams.get("limit") ?? process.env.POLYMARKET_MARKET_LIMIT ?? 10) || 10, 25);
+      const markets = await fetchTrendingMarkets({ limit });
+      return json(res, 200, {
+        status: "ok",
+        source: "polymarket:gamma",
+        count: markets.length,
+        markets: markets.map(marketPreview),
+        disclaimer: process.env.MARKET_BRIEF_DISCLAIMER || "Informational only. Not trading, betting, or financial advice."
+      });
+    } catch (error) {
+      return json(res, 502, {
+        status: "error",
+        source: "polymarket:gamma",
+        reason: error.message
+      });
+    }
+  }
+
   if (req.method === "GET" && url.pathname === "/api/leadnestai/status") {
     return json(res, 200, {
       status: "ok",
@@ -1264,27 +1318,45 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "GET" && isProtectedResource(url.pathname)) {
-    const productBlocker = mainnetProductBlocker();
-    if (productBlocker) {
-      return json(res, 503, {
-        error: "Mainnet paid product is not ready.",
-        reason: productBlocker,
-        product: leadPackStatus()
-      });
+    const resource = paymentResourceFromUrl(url);
+    const isLeadPack = isLeadPackResource(url.pathname);
+    const isMarketBrief = isMarketBriefResource(url.pathname);
+    const filter = isLeadPack ? locationFilterFromUrl(url) : { active: false };
+    let matchedLeadPack = [];
+
+    if (isLeadPack) {
+      const productBlocker = mainnetProductBlocker();
+      if (productBlocker) {
+        return json(res, 503, {
+          error: "Mainnet paid product is not ready.",
+          reason: productBlocker,
+          product: leadPackStatus()
+        });
+      }
+
+      matchedLeadPack = filterLeadPack(filter);
+      if (filter.active && matchedLeadPack.length === 0) {
+        logEvent("lead_pack_filter_empty", {
+          resource,
+          filter
+        });
+        return json(res, 404, {
+          error: "No local leads available",
+          reason: "No active lead records currently match the requested city, state, zip, or query. Try a nearby market or broader filter.",
+          filter,
+          product: leadPackStatus()
+        });
+      }
     }
 
-    const filter = locationFilterFromUrl(url);
-    const matchedLeadPack = filterLeadPack(filter);
-    if (filter.active && matchedLeadPack.length === 0) {
-      logEvent("lead_pack_filter_empty", {
-        resource: paymentResourceFromUrl(url),
-        filter
-      });
-      return json(res, 404, {
-        error: "No local leads available",
-        reason: "No active lead records currently match the requested city, state, zip, or query. Try a nearby market or broader filter.",
-        filter,
-        product: leadPackStatus()
+    if (isMarketBrief && !MARKET_BRIEF_ENABLED) {
+      return json(res, 404, { error: "Market brief API is disabled." });
+    }
+
+    if (isMarketBrief && !url.searchParams.get("slug")) {
+      return json(res, 400, {
+        error: "Market slug required",
+        reason: "Call /api/markets/brief?slug=<market-slug> with a Polymarket market slug."
       });
     }
 
@@ -1292,7 +1364,7 @@ const server = http.createServer(async (req, res) => {
     const verification = await verifyPayment(payment);
 
     if (!verification.ok) {
-      const requirements = paymentRequirements(paymentResourceFromUrl(url), filter);
+      const requirements = paymentRequirements(resource, filter);
       const paymentRequired = officialPaymentRequired(req, requirements, verification.reason);
       const paymentRequiredHeader = encodePaymentRequiredHeader(paymentRequired);
 
@@ -1312,9 +1384,44 @@ const server = http.createServer(async (req, res) => {
       );
     }
 
+    if (isMarketBrief) {
+      try {
+        const market = await fetchMarketBySlug(url.searchParams.get("slug"));
+        const brief = buildMarketBrief(market);
+        const paymentResponse = {
+          success: true,
+          transaction: verification.receipt.transaction ?? verification.receipt.id,
+          network: verification.receipt.network,
+          amount: verification.receipt.amount,
+          payer: verification.receipt.payer
+        };
+
+        logEvent("market_brief_unlocked", {
+          receiptId: verification.receipt.id,
+          resource,
+          slug: market.slug
+        });
+
+        return json(res, 200, {
+          status: "unlocked",
+          receipt: publicReceipt(verification.receipt),
+          data: brief
+        }, {
+          "PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse),
+          "X-PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse)
+        });
+      } catch (error) {
+        return json(res, 502, {
+          error: "Market brief unavailable",
+          reason: error.message,
+          source: "polymarket:gamma"
+        });
+      }
+    }
+
     logEvent("lead_pack_unlocked", {
       receiptId: verification.receipt.id,
-      resource: paymentResourceFromUrl(url),
+      resource,
       filter,
       records: matchedLeadPack.length
     });
