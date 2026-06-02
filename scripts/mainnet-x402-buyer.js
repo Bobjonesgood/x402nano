@@ -34,6 +34,8 @@ const rpcUrl = process.env.BASE_MAINNET_RPC_URL?.trim() || DEFAULT_BASE_MAINNET_
 const paymentAck = process.env.MAINNET_PAYMENT_ACK?.trim();
 const maxUsdc = process.env.MAINNET_MAX_USDC?.trim() || DEFAULT_MAX_USDC;
 const expectedSeller = process.env.MAINNET_EXPECTED_SELLER_ADDRESS?.trim();
+const paidPath = process.env.MAINNET_PAID_PATH?.trim() || "/api/lead-intelligence/premium-pack";
+const isMarketBriefTest = paidPath.startsWith("/api/markets/brief");
 
 function toUsdcAtomic(value) {
   const [whole = "0", fraction = ""] = String(value).split(".");
@@ -98,7 +100,11 @@ function printBalances(label, balances) {
 
 async function readReceiptEvents(receiptId) {
   const { body } = await fetchJson("/api/events");
-  const expectedTypes = ["payment_verified", "receipt_generated", "lead_pack_unlocked"];
+  const expectedTypes = [
+    "payment_verified",
+    "receipt_generated",
+    isMarketBriefTest ? "market_brief_unlocked" : "lead_pack_unlocked"
+  ];
   const foundTypes = new Set(
     (body.events ?? [])
       .filter(event => event.details?.receiptId === receiptId)
@@ -120,21 +126,23 @@ async function run() {
   const [{ body: manifest }, { body: version }, unpaid] = await Promise.all([
     fetchJson("/.well-known/x402.json"),
     fetchJson("/api/version"),
-    fetchJson("/api/lead-intelligence/premium-pack")
+    fetchJson(paidPath)
   ]);
 
-  const paidResource = manifest.links?.paidResource;
   const requirements = unpaid.body.paymentRequirements;
   const accepted = unpaid.body.x402?.accepts?.[0];
   const manifestSeller = manifest.x402?.sellerWallet?.address ?? version.payment?.sellerWallet?.address;
+  const paidResource = new URL(requirements?.resource ?? paidPath, apiOrigin).toString();
 
-  requireCondition(paidResource, "Discovery manifest did not include links.paidResource.");
+  requireCondition(paidResource, "Paid resource could not be resolved.");
   requireCondition(unpaid.response.status === 402, `Expected unpaid resource to return 402, got ${unpaid.response.status}.`);
   requireCondition(manifest.x402?.paymentMode === "facilitator", "Server is not in facilitator mode.");
   requireCondition(manifest.x402?.settlement === "facilitator-onchain", "Server settlement is not facilitator-onchain.");
   requireCondition(version.payment?.network === MAINNET_NETWORK, `Version endpoint is not Base mainnet ${MAINNET_NETWORK}.`);
-  requireCondition(version.product?.productionConfigured === true, "Production lead pack is not configured.");
-  requireCondition(version.product?.mainnetReady === true, "Product status is not mainnet ready.");
+  if (!isMarketBriefTest) {
+    requireCondition(version.product?.productionConfigured === true, "Production lead pack is not configured.");
+    requireCondition(version.product?.mainnetReady === true, "Product status is not mainnet ready.");
+  }
   requireCondition(requirements?.network === MAINNET_NETWORK, `Payment requirement network is ${requirements?.network ?? "missing"}, not ${MAINNET_NETWORK}.`);
   requireCondition(requirements?.asset === "USDC", `Payment requirement asset is ${requirements?.asset ?? "missing"}, not USDC.`);
   requireCondition(requirements?.amount, "Payment requirement amount is missing.");
@@ -151,7 +159,8 @@ async function run() {
   console.log(`price: ${requirements.amount} ${requirements.asset}`);
   console.log(`network: ${requirements.network}`);
   console.log(`seller: ${requirements.payTo}`);
-  console.log(`records: ${version.product?.records ?? 0}`);
+  console.log(`test type: ${isMarketBriefTest ? "market brief" : "lead pack"}`);
+  if (!isMarketBriefTest) console.log(`records: ${version.product?.records ?? 0}`);
 
   if (!privateKey || paymentAck !== PAYMENT_ACK) {
     console.log("\nPreflight passed. No real payment was sent.");
@@ -203,14 +212,23 @@ async function run() {
   console.log(`\nreceipt: ${paidBody.receipt?.id ?? "missing"}`);
   console.log(`receipt network: ${paidBody.receipt?.network ?? "missing"}`);
   console.log(`receipt amount: ${paidBody.receipt?.amount ?? "missing"} ${paidBody.receipt?.asset ?? ""}`.trim());
-  console.log(`lead intelligence records: ${paidBody.data?.length ?? 0}`);
+  if (isMarketBriefTest) {
+    console.log(`market brief status: ${paidBody.data?.status ?? "missing"}`);
+    console.log(`market brief slug: ${paidBody.data?.market?.slug ?? "missing"}`);
+  } else {
+    console.log(`lead intelligence records: ${paidBody.data?.length ?? 0}`);
+  }
   printBalances("after", balancesAfter);
   console.log(`buyer delta USDC: ${formatUnits(buyerDelta, 6)}`);
   console.log(`seller delta USDC: ${formatUnits(sellerDelta, 6)}`);
 
   requireCondition(paidBody.receipt?.id, "Paid response did not include a receipt id.");
   requireCondition(paidBody.receipt?.network === MAINNET_NETWORK, "Paid receipt is not Base mainnet.");
-  requireCondition((paidBody.data?.length ?? 0) > 0, "Paid response did not unlock lead intelligence records.");
+  if (isMarketBriefTest) {
+    requireCondition(paidBody.data?.briefType === "read-only-market-intelligence", "Paid response did not unlock a market brief.");
+  } else {
+    requireCondition((paidBody.data?.length ?? 0) > 0, "Paid response did not unlock lead intelligence records.");
+  }
   requireCondition(buyerDelta >= toUsdcAtomic(requirements.amount), "Buyer USDC balance did not decrease by the payment amount yet.");
   requireCondition(sellerDelta >= toUsdcAtomic(requirements.amount), "Seller USDC balance did not increase by the payment amount yet.");
 
