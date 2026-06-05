@@ -21,9 +21,9 @@ const BUYER_ADDRESS = process.env.BUYER_ADDRESS ?? "0xAutonomousAgentWallet";
 const PRICE_USDC = process.env.PRICE_USDC ?? "0.05";
 const NETWORK = process.env.X402_NETWORK ?? "eip155:84532";
 const ASSET = process.env.X402_ASSET ?? "USDC";
-const API_NAME = "LeadNestAI Lead Intelligence API";
+const API_NAME = "x402nano Market Intelligence API";
 const RELEASE_VERSION = process.env.RELEASE_VERSION ?? "0.2.0";
-const RELEASE_NAME = process.env.RELEASE_NAME ?? "LeadNestAI Machine-Payable Lead Intelligence Proof";
+const RELEASE_NAME = process.env.RELEASE_NAME ?? "x402nano Machine-Payable Market Intelligence Proof";
 const PAYMENT_HEADER = "X-PAYMENT";
 const RESOURCE_PATH = "/api/lead-intelligence/premium-pack";
 const LEGACY_RESOURCE_PATH = "/api/premium-leads";
@@ -211,6 +211,20 @@ function leadPackStatus() {
       ? "Production lead intelligence records are configured for the paid resource."
       : "Built-in records are demo lead intelligence. Configure a production lead pack before Base mainnet paid access.",
     reason: productionConfigured ? null : productionLeadPack.error || "Set LEAD_PACK_MODE=production and PREMIUM_LEAD_PACK_JSON for the first real paid pack."
+  };
+}
+
+function marketProductStatus() {
+  return {
+    name: "x402nano market briefs",
+    status: "mainnet proof complete",
+    dataSource: "Polymarket public data",
+    freeResource: "/api/markets/trending",
+    paidResource: `${MARKET_BRIEF_PATH}?slug={polymarket-slug}`,
+    output: "read-only market intelligence JSON",
+    price: `${PRICE_USDC} ${ASSET}`,
+    network: NETWORK,
+    disclaimer: "Informational only; no trading, betting, or financial advice."
   };
 }
 
@@ -521,6 +535,91 @@ const bazaarLeadPackDiscovery = declareDiscoveryExtension({
   }
 });
 
+const marketBriefSchema = {
+  type: "object",
+  required: ["status", "receipt", "data"],
+  properties: {
+    status: { type: "string", enum: ["unlocked"] },
+    receipt: {
+      type: "object",
+      required: ["id", "payer", "seller", "amount", "asset", "network", "settledAt"],
+      properties: {
+        id: { type: "string" },
+        payer: { type: "string" },
+        seller: { type: "string" },
+        amount: { type: "string" },
+        asset: { type: "string" },
+        network: { type: "string" },
+        settledAt: { type: "string", format: "date-time" }
+      }
+    },
+    data: {
+      type: "object",
+      required: ["briefType", "status", "market"],
+      properties: {
+        briefType: { type: "string", enum: ["read-only-market-intelligence"] },
+        status: { type: "string" },
+        market: {
+          type: "object",
+          required: ["slug"],
+          properties: {
+            slug: { type: "string" },
+            question: { type: "string" },
+            probability: { type: "number" },
+            volume: { type: "number" },
+            liquidity: { type: "number" }
+          }
+        },
+        summary: { type: "string" },
+        signals: {
+          type: "array",
+          items: { type: "string" }
+        },
+        caveats: {
+          type: "array",
+          items: { type: "string" }
+        }
+      }
+    }
+  }
+};
+
+const bazaarMarketBriefOutputExample = {
+  status: "unlocked",
+  receipt: {
+    id: "receipt-id-after-payment",
+    payer: "external-x402-client",
+    seller: SELLER_ADDRESS,
+    amount: PRICE_USDC,
+    asset: ASSET,
+    network: NETWORK,
+    settledAt: "2026-06-05T15:30:44.641Z"
+  },
+  data: {
+    briefType: "read-only-market-intelligence",
+    status: "ok",
+    market: {
+      slug: "will-gideon-saar-be-the-next-prime-minister-of-israel",
+      question: "Will Gideon Saar be the next Prime Minister of Israel?"
+    },
+    summary: "Read-only market brief for agents and bots. Informational only; no trading, betting, or financial advice.",
+    signals: ["public Polymarket market data", "price/liquidity context", "market metadata"],
+    caveats: ["not trading advice", "not financial advice", "not a recommendation to buy or sell"]
+  }
+};
+
+const bazaarMarketBriefDiscovery = declareDiscoveryExtension({
+  method: "GET",
+  inputSchema: {
+    properties: {},
+    additionalProperties: false
+  },
+  output: {
+    example: bazaarMarketBriefOutputExample,
+    schema: marketBriefSchema
+  }
+});
+
 function json(res, statusCode, body, extraHeaders = {}) {
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
@@ -591,8 +690,7 @@ function versionPayload() {
       amount: PRICE_USDC,
       sellerWallet: sellerWalletStatus()
     },
-    product: leadPackStatus(),
-    leadNestAI: leadNestAIReadiness(leadNestAI),
+    product: marketProductStatus(),
     build: buildInfo()
   };
 }
@@ -846,7 +944,7 @@ function officialPaymentRequired(req, requirements, error = "Payment required") 
         : ["leads", "agents", "x402", "lead-intelligence", "service-business", environmentTag]
     },
     accepts: [officialPaymentRequirements(requirements)],
-    extensions: bazaarLeadPackDiscovery
+    extensions: isMarketBrief ? bazaarMarketBriefDiscovery : bazaarLeadPackDiscovery
   };
 }
 
@@ -998,7 +1096,7 @@ function apiDiscovery(req) {
   const origin = publicOrigin(req);
   return {
     name: API_NAME,
-    description: "A machine-payable LeadNestAI endpoint that buyers and autonomous agents can discover, price, pay, retry, and unlock.",
+    description: "Machine-payable read-only Polymarket market intelligence for AI agents and bots.",
     version: "1.0.0",
     x402: {
       version: PAYMENT_MODE === "facilitator" ? "1" : "sandbox-1",
@@ -1012,24 +1110,23 @@ function apiDiscovery(req) {
       supportedAssets: [ASSET],
       sellerWallet: sellerWalletStatus()
     },
-    product: leadPackStatus(),
-    leadNestAI: leadNestAIReadiness(leadNestAI),
+    product: marketProductStatus(),
     links: {
       self: `${origin}/.well-known/x402.json`,
       health: `${origin}/api/health`,
       version: `${origin}/api/version`,
       pricing: `${origin}/api/pricing`,
       schema: `${origin}/api/schema`,
-      paidResource: `${origin}${RESOURCE_PATH}`,
+      trendingMarkets: `${origin}/api/markets/trending`,
+      paidResource: `${origin}${MARKET_BRIEF_PATH}?slug=will-gideon-saar-be-the-next-prime-minister-of-israel`,
       sandboxSigner: paymentProvider.isClientSigningAvailable ? `${origin}/api/payments/sign` : null,
-      leadNestAIHandoff: `${origin}/api/leadnestai/handoff`,
       receiptTemplate: `${origin}/api/receipts/{receiptId}`
     },
     endpoints: [
       {
         method: "GET",
-        path: RESOURCE_PATH,
-        description: "Returns a premium LeadNestAI lead intelligence pack after a valid x402-style payment header is verified.",
+        path: `${MARKET_BRIEF_PATH}?slug={polymarket-slug}`,
+        description: "Returns a read-only Polymarket market intelligence brief after a valid x402 payment header is verified.",
         price: `${PRICE_USDC} ${ASSET}`,
         payment: {
           header: PAYMENT_HEADER,
@@ -1038,7 +1135,13 @@ function apiDiscovery(req) {
           retryBehavior: "Repeat the same request with X-PAYMENT set to the encoded payment payload."
         },
         responseSchema: "/api/schema",
-        flow: ["discover", "request", "receive 402 requirements", "sign payment", "retry with X-PAYMENT", "receive premium lead intelligence"]
+        flow: ["discover", "request market brief", "receive 402 requirements", "sign payment", "retry with X-PAYMENT", "receive receipt and market brief JSON"]
+      },
+      {
+        method: "GET",
+        path: "/api/markets/trending",
+        description: "Returns free Polymarket market candidates for agents to inspect before paying for a brief.",
+        price: "free"
       }
     ]
   };
@@ -1112,7 +1215,7 @@ const server = http.createServer(async (req, res) => {
       paymentMode: paymentProvider.mode,
       settlement: paymentProvider.settlement,
       sellerWallet: sellerWalletStatus(),
-      product: leadPackStatus(),
+      product: marketProductStatus(),
       uptimeSeconds: Math.floor(process.uptime()),
       issuedQuotes: issuedRequirements.size,
       settledPayments: payments.size,
@@ -1126,9 +1229,9 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && url.pathname === "/api/pricing") {
     return json(res, 200, {
-      resource: RESOURCE_PATH,
-      legacyResource: LEGACY_RESOURCE_PATH,
-      currentResource: RESOURCE_PATH,
+      resource: `${MARKET_BRIEF_PATH}?slug={polymarket-slug}`,
+      freeResource: "/api/markets/trending",
+      proofResource: `${MARKET_BRIEF_PATH}?slug=will-gideon-saar-be-the-next-prime-minister-of-israel`,
       amount: PRICE_USDC,
       asset: ASSET,
       network: NETWORK,
@@ -1138,17 +1241,16 @@ const server = http.createServer(async (req, res) => {
       quoteTtlSeconds: Math.floor(PAYMENT_TTL_MS / 1000),
       paymentMode: paymentProvider.mode,
       sellerWallet: sellerWalletStatus(),
-      product: leadPackStatus(),
+      product: marketProductStatus(),
       provider: paymentProvider.describe()
     });
   }
 
   if (req.method === "GET" && url.pathname === "/api/schema") {
     return json(res, 200, {
-      resource: RESOURCE_PATH,
-      legacyResource: LEGACY_RESOURCE_PATH,
+      resource: `${MARKET_BRIEF_PATH}?slug={polymarket-slug}`,
       contentType: "application/json",
-      schema: leadSchema
+      schema: marketBriefSchema
     });
   }
 

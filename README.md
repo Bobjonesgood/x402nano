@@ -1,108 +1,205 @@
-# LeadNestAI Machine-Payable Lead Intelligence
+# x402nano
 
-LeadNestAI is the product story. x402 is the payment-aware API layer underneath it.
+Machine-payable market intelligence API for AI agents and bots.
 
-Live seller:
+x402nano serves read-only Polymarket market briefs behind an HTTP 402 payment flow. An agent requests a market brief, receives a payment challenge, retries with `X-PAYMENT`, and receives unlocked JSON plus a receipt.
+
+This is market intelligence infrastructure, not trading advice.
+
+## Live Endpoint
 
 ```txt
 https://x402nano.onrender.com
-GET /api/lead-intelligence/premium-pack
 ```
 
-## Current Status
+Free discovery/trending endpoint:
 
-The live seller is configured for:
+```http
+GET https://x402nano.onrender.com/api/markets/trending
+```
+
+Paid market brief endpoint:
+
+```http
+GET https://x402nano.onrender.com/api/markets/brief?slug=will-gideon-saar-be-the-next-prime-minister-of-israel
+```
+
+## Mainnet Proof
+
+x402nano has completed one real paid unlock on Base mainnet.
 
 ```txt
-Base mainnet payment challenge
-USDC price: 0.05
-CDP facilitator settlement path
-reviewed three-record production starter pack
-manual LeadNestAI handoff only
+Network: Base mainnet, eip155:8453
+Asset: USDC
+Price: 0.05 USDC
+Seller wallet: 0x4cc3831eB479aCFb6D44631d4a30814508Cf52d3
+Receipt: f1ffa2f5cabf94c3
+USDC transfer tx: 0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1
+BaseScan: https://basescan.org/tx/0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1
 ```
 
-The live endpoint has been checked for a real Base mainnet `402 Payment Required` challenge. The first controlled mainnet paid unlock is still a separate proof step.
+The proof run verified:
 
-The paid challenge declares x402 Bazaar discovery metadata for the same one resource: a machine-payable lead intelligence pack for service-business sales automation.
+```txt
+HTTP 402 challenge issued
+0.05 USDC paid on Base mainnet
+X-PAYMENT retry accepted
+receipt generated
+market brief JSON unlocked
+on-chain USDC transfer confirmed
+```
 
-## What It Does
+Proof artifact:
 
-1. Buyer or agent discovers `/.well-known/x402.json`.
-2. Buyer requests the paid lead pack.
-3. Seller returns `402 Payment Required`.
-4. Buyer retries with `X-PAYMENT`.
-5. Seller verifies payment and returns a receipt plus lead intelligence.
-6. A selected unlocked lead can be manually handed into LeadNestAI.
+```txt
+x402nano-mainnet-proof-2026-06-05.md
+```
 
-## Fast Checks
+Note: the local buyer script exited nonzero after the real unlock because the immediate post-payment buyer balance read was stale. Seller balance updated, receipt/events were recorded, and a later no-payment balance check confirmed the buyer moved from `1.00` to `0.95` USDC.
+
+## Buyer Flow
+
+1. Discover the API.
+
+```http
+GET https://x402nano.onrender.com/.well-known/x402.json
+```
+
+2. Request a paid market brief.
+
+```powershell
+Invoke-WebRequest `
+  -Uri "https://x402nano.onrender.com/api/markets/brief?slug=will-gideon-saar-be-the-next-prime-minister-of-israel" `
+  -UseBasicParsing
+```
+
+3. Expect `402 Payment Required`.
+
+The response includes payment requirements similar to:
+
+```json
+{
+  "error": "payment_required",
+  "paymentRequirements": {
+    "network": "eip155:8453",
+    "asset": "USDC",
+    "amount": "0.05",
+    "payTo": "0x4cc3831eB479aCFb6D44631d4a30814508Cf52d3",
+    "resource": "/api/markets/brief?slug=will-gideon-saar-be-the-next-prime-minister-of-israel"
+  }
+}
+```
+
+4. Sign and send the x402 payment.
+
+Use an x402-compatible client to sign the Base mainnet USDC payment, then retry the same request with:
+
+```http
+X-PAYMENT: <signed-x402-payment>
+```
+
+5. Receive the unlocked JSON.
+
+Successful paid responses include a receipt and the market brief payload:
+
+```json
+{
+  "receipt": {
+    "id": "f1ffa2f5cabf94c3",
+    "network": "eip155:8453",
+    "amount": "0.05",
+    "asset": "USDC"
+  },
+  "data": {
+    "briefType": "read-only-market-intelligence",
+    "status": "ok",
+    "market": {
+      "slug": "will-gideon-saar-be-the-next-prime-minister-of-israel"
+    }
+  }
+}
+```
+
+## Local Proof Command
+
+Preflight only:
+
+```powershell
+cd C:\Users\bobjo\Documents\Codex\2026-05-17\ok-ive-already-built-a-x402
+$env:MAINNET_PAID_PATH="/api/markets/brief?slug=will-gideon-saar-be-the-next-prime-minister-of-israel"
+$env:MAINNET_MAX_USDC="0.05"
+$env:MAINNET_PAYMENT_ACK="PREFLIGHT_ONLY"
+npm.cmd run agent:mainnet
+```
+
+Real payment, only when intentionally sending one `0.05 USDC` unlock:
+
+```powershell
+cd C:\Users\bobjo\Documents\Codex\2026-05-17\ok-ive-already-built-a-x402
+$env:MAINNET_PAID_PATH="/api/markets/brief?slug=will-gideon-saar-be-the-next-prime-minister-of-israel"
+$env:MAINNET_MAX_USDC="0.05"
+$env:MAINNET_PAYMENT_ACK="PAY_REAL_0.05_USDC"
+npm.cmd run agent:mainnet
+```
+
+## Launch Ask
+
+x402nano is looking for feedback from 20 AI agent, trading bot, and market-data builders.
+
+What to check:
+
+```txt
+Would a machine-readable market brief be useful to your agent?
+Is 0.05 USDC per brief the right shape for testing?
+What fields would your bot need before paying for a brief?
+Would you rather call this directly, through an SDK, or through another agent framework?
+```
+
+Positioning:
+
+```txt
+Stop scraping. Use a machine-payable API for market briefs.
+0.05 USDC per read-only market brief on Base.
+No account. No API key. HTTP 402 and X-PAYMENT.
+```
+
+## Current Scope
+
+In scope:
+
+```txt
+Polymarket public data
+read-only market intelligence
+free trending endpoint
+paid market brief endpoint
+HTTP 402 challenge
+Base mainnet USDC unlock
+receipt and proof
+```
+
+Out of scope for this launch:
+
+```txt
+trading advice
+trade execution
+Telegram bot
+lead generation
+x402 consulting
+new product features before feedback
+```
+
+## Development
 
 ```powershell
 npm.cmd install
 npm.cmd run build
 npm.cmd run settlement:check
-$env:AGENT_API_ORIGIN="https://x402nano.onrender.com"
-npm.cmd run smoke
-npm.cmd run leadnestai:test
 ```
 
-## Mainnet Buyer Preflight
+Core scripts:
 
-```powershell
+```txt
 npm.cmd run agent:mainnet
-```
-
-That command checks the live mainnet endpoint and exits before payment until a local dedicated buyer key and explicit payment acknowledgement exist.
-
-Create a fresh local-only buyer wallet when needed:
-
-```powershell
-npm.cmd run wallet:mainnet:create
-```
-
-The helper writes `.env.mainnet.local`, which is ignored by Git, and prints only the public address. Do not put buyer private keys in Render or chat.
-
-## Environment Shape
-
-Seller-side mainnet configuration:
-
-```txt
-X402_PAYMENT_MODE=facilitator
-X402_FACILITATOR_URL=https://api.cdp.coinbase.com/platform/v2/x402
-CDP_API_KEY_ID=<hosting secret>
-CDP_API_KEY_SECRET=<hosting secret>
-SELLER_ADDRESS=<reviewed Base receiving wallet>
-X402_NETWORK=eip155:8453
-X402_ASSET=USDC
-PRICE_USDC=0.05
-LEAD_PACK_MODE=production
-PREMIUM_LEAD_PACK_JSON=<reviewed production pack>
-```
-
-LeadNestAI manual handoff:
-
-```txt
-LEAD_HANDOFF_ENABLED=true
-LEADNESTAI_API_URL=https://www.leadnestai.net
-LEADNESTAI_INGEST_SECRET=<shared secret>
-LEADNESTAI_SOURCE_ID=x402nano
-```
-
-## Docs Kept
-
-```txt
-RUNBOOK.md
-PROJECT_INDEX.md
-ARCHITECTURE.md
-API_OVERVIEW.md
-TRUST.md
-PRODUCTION_LEAD_PACK.md
-MAINNET_LAUNCH_CHECKLIST.md
-MAINNET_REVENUE_READINESS.md
-```
-
-Proof retained:
-
-```txt
-BASE_SEPOLIA_REAL_SETTLEMENT_PROOF.md
-X402_TO_LEADNESTAI_LIVE_PROOF.md
+npm.cmd run smoke
+npm.cmd run build
 ```
