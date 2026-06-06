@@ -1,212 +1,189 @@
-# LeadNestAI Machine-Payable API Architecture
+# x402nano Architecture
 
-## Purpose
+x402nano is a small x402-protected API for machine-payable Polymarket market intelligence.
 
-This project is a commercial proof-of-concept for LeadNestAI as a machine-payable lead intelligence API.
+The architecture is intentionally narrow:
 
-LeadNestAI is the commercial front. The x402-style payment flow is the infrastructure advantage underneath it.
+```txt
+Agent or bot
+  -> GET /api/markets/trending
+  -> choose market slug
+  -> GET /api/markets/brief?slug=...
+  <- HTTP 402 Payment Required
+  -> retry same route with X-PAYMENT
+  -> Base mainnet USDC settlement
+  <- receipt + read-only JSON market brief
+```
 
-## Core Components
+No trading execution, custody, user accounts, API keys, betting advice, or buy/sell recommendations are part of the system.
+
+## Components
 
 ```mermaid
 flowchart LR
-  UI["React Demo UI"]
-  Agent["Buyer Agent / Browser Wallet"]
-  API["LeadNestAI Seller API"]
-  Provider["Payment Provider"]
-  Leads["Premium Lead Intelligence Pack"]
-  Handoff["Manual LeadNestAI Handoff"]
-  LeadNest["LeadNestAI Ingest API"]
-  Receipts["Receipt Store"]
-  Events["Event Log"]
+  Agent["Autonomous Agent / Bot / API Client"]
+  Discovery["/.well-known/x402.json"]
+  Trending["Free /api/markets/trending"]
+  Brief["Paid /api/markets/brief?slug=..."]
+  Provider["x402 Facilitator"]
+  Base["Base Mainnet USDC"]
+  Poly["Polymarket Public Data"]
+  Receipt["Receipt"]
+  Events["In-Memory Event Log"]
 
-  UI --> API
-  Agent --> API
-  API --> Provider
-  Provider --> API
-  API --> Leads
-  Leads --> Handoff
-  Handoff --> LeadNest
-  API --> Receipts
-  API --> Events
+  Agent --> Discovery
+  Agent --> Trending
+  Agent --> Brief
+  Brief --> Poly
+  Brief --> Provider
+  Provider --> Base
+  Provider --> Brief
+  Brief --> Receipt
+  Brief --> Events
+  Brief --> Agent
 ```
 
-## Buyer Flow
-
-1. Buyer or agent discovers the API through `/.well-known/x402.json`.
-2. Buyer requests `/api/lead-intelligence/premium-pack`.
-3. Seller returns `402 Payment Required` with payment requirements.
-4. Buyer creates a payment payload.
-5. Buyer retries the same endpoint with `X-PAYMENT`.
-6. Seller verifies payment.
-7. Seller returns a LeadNestAI premium lead intelligence pack and receipt.
+## Payment Sequence
 
 ```mermaid
 sequenceDiagram
-  participant Buyer as Buyer or Agent
-  participant API as LeadNestAI API
-  participant Pay as Payment Provider
-  participant Pack as Lead Intelligence Pack
+  participant Agent as Agent or Bot
+  participant API as x402nano API
+  participant Pay as x402 Facilitator
+  participant Base as Base Mainnet USDC
+  participant Poly as Polymarket Public Data
 
-  Buyer->>API: GET /.well-known/x402.json
-  API-->>Buyer: paid endpoint, price, network, asset
-  Buyer->>API: GET /api/lead-intelligence/premium-pack
-  API-->>Buyer: 402 Payment Required + quote
-  Buyer->>Pay: create payment payload
-  Pay-->>Buyer: X-PAYMENT payload
-  Buyer->>API: retry with X-PAYMENT
-  API->>Pay: verify payment
+  Agent->>API: GET /.well-known/x402.json
+  API-->>Agent: manifest, price, network, paid route
+  Agent->>API: GET /api/markets/trending
+  API-->>Agent: free market candidates
+  Agent->>API: GET /api/markets/brief?slug=...
+  API-->>Agent: 402 Payment Required + requirements
+  Agent->>API: retry with X-PAYMENT
+  API->>Pay: verify payment payload
+  Pay->>Base: settle 0.05 USDC
+  Base-->>Pay: settlement result
   Pay-->>API: verified
-  API->>Pack: unlock records
-  API-->>Buyer: lead pack + receipt
+  API->>Poly: read public market data
+  API-->>Agent: receipt + read-only JSON brief
 ```
 
-## Seller Flow
-
-1. Publish a discovery manifest.
-2. Quote price, network, asset, seller wallet, resource, and nonce.
-3. Track issued quotes.
-4. Reject unpaid access.
-5. Verify payment payloads.
-6. Prevent replayed nonces.
-7. Generate receipts.
-8. Log quote, payment, unlock, and receipt events.
-
-```mermaid
-flowchart TD
-  Quote["quote_issued"]
-  Attempt["payment_attempted"]
-  Verified["payment_verified"]
-  Unlock["lead_pack_unlocked"]
-  Receipt["receipt_generated"]
-
-  Quote --> Attempt --> Verified --> Unlock --> Receipt
-```
-
-## Receipt Flow
-
-When payment verifies, the server creates a receipt containing:
-
-- receipt id
-- payer
-- seller
-- amount
-- asset
-- network
-- protected resource
-- settlement mode
-- transaction reference
-- timestamp
-
-Receipts are available through:
+## Free Route
 
 ```txt
-/api/receipts/{receiptId}
+GET /api/markets/trending
+```
+
+Purpose:
+
+```txt
+Expose free Polymarket market candidates that agents can inspect before paying for a brief.
+```
+
+## Paid Route
+
+```txt
+GET /api/markets/brief?slug=...
+```
+
+Purpose:
+
+```txt
+Return a structured, read-only Polymarket market brief after a valid x402 payment.
+```
+
+Payment:
+
+```txt
+0.05 USDC
+Base mainnet
+eip155:8453
+X-PAYMENT header
+```
+
+## Receipt Model
+
+When payment verifies, x402nano returns a receipt with:
+
+```txt
+receipt id
+payer
+seller
+amount
+asset
+network
+protected resource
+settlement mode
+timestamp
+```
+
+Known proof receipt:
+
+```txt
+f1ffa2f5cabf94c3
+```
+
+Known proof transaction:
+
+```txt
+https://basescan.org/tx/0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1
 ```
 
 ## Event Logging
 
-The server keeps a lightweight in-memory event log for future metering:
-
-- `quote_issued`
-- `payment_attempted`
-- `payment_verified`
-- `lead_pack_unlocked`
-- `receipt_generated`
-- `lead_handoff_attempted`
-- `lead_handoff_succeeded`
-- `lead_handoff_failed`
-
-The current event endpoint is:
+The server retains a lightweight in-memory event log:
 
 ```txt
-/api/events
+quote_issued
+payment_attempted
+payment_verified
+receipt_generated
+market_brief_unlocked
 ```
 
-This is a structure for future usage metering, analytics, billing records, and operational debugging. It is not a production database yet.
-
-## LeadNestAI Handoff Flow
-
-The first integration is intentionally manual and selected-lead-only:
-
-1. x402 unlocks the premium lead pack.
-2. The user selects one lead and clicks `Send to LeadNestAI`.
-3. The x402 server validates the receipt and selected lead id.
-4. The x402 server forwards the lead to LeadNestAI with bearer-token auth.
-5. LeadNestAI deduplicates by `source + receiptId + externalLeadId`.
-6. LeadNestAI also checks `businessName + location + industry`.
-7. LeadNestAI stores the lead and starts only the normal intake workflow, not automatic outreach.
-
-```mermaid
-sequenceDiagram
-  participant UI as x402 Demo UI
-  participant X402 as x402 Seller API
-  participant LNAI as LeadNestAI Ingest API
-
-  UI->>X402: POST /api/leadnestai/handoff
-  X402->>X402: validate receipt and selected lead
-  X402->>LNAI: POST /api/integrations/x402/leads
-  LNAI->>LNAI: dedupe idempotency and business identity
-  LNAI-->>X402: stored or duplicate
-  X402-->>UI: handoff result
-```
-
-This bridge does not trigger automatic outreach yet.
-
-## Settlement Modes
-
-### Sandbox Mode
+Endpoint:
 
 ```txt
-X402_PAYMENT_MODE=sandbox
+GET /api/events
 ```
 
-Sandbox mode keeps the demo safe:
+This event log is for recent operational debugging. It is not durable analytics. The durable public payment proof is the on-chain Base USDC transfer.
 
-- no real funds move
-- sandbox signer creates payment payloads
-- browser wallet signs an authorization message
-- receipt proves the access flow
+## Data Boundary
 
-### Facilitator Mode
+x402nano reads public Polymarket market data and returns informational JSON. The API does not:
 
 ```txt
-X402_PAYMENT_MODE=facilitator
+place orders
+hold funds
+manage user accounts
+sign trades for users
+recommend buy/sell/bet actions
+guarantee outcomes
 ```
 
-Facilitator mode disables the sandbox signer and expects a real x402 payment payload in `X-PAYMENT`.
+## Current Launch Scope
 
-The live mainnet seller is currently configured in facilitator mode with CDP auth, Base mainnet USDC requirements, and a reviewed production lead pack. Follow `MAINNET_LAUNCH_CHECKLIST.md` for the first controlled paid unlock and rollback path.
-
-## Current Product Shape
-
-The protected commercial resource is:
+In scope:
 
 ```txt
-/api/lead-intelligence/premium-pack
+Polymarket public data
+free trending route
+paid market brief route
+HTTP 402 challenge
+X-PAYMENT retry
+Base mainnet USDC
+receipt and proof
 ```
 
-It returns structured lead intelligence:
+Out of scope:
 
-- business name
-- industry
-- location
-- estimated job value
-- buying intent
-- pain points
-- recommended opener
-- confidence score
-
-## Future Autonomous Agent Use Case
-
-An autonomous buyer agent can:
-
-1. discover LeadNestAI
-2. inspect price and schema
-3. decide whether the lead pack is worth buying
-4. pay automatically
-5. unlock the lead intelligence
-6. use the recommended opener in an outreach workflow
-7. repeat without human checkout
-
-That is the long-term infrastructure direction.
+```txt
+Telegram
+dashboard
+user accounts
+trading execution
+custody
+betting advice
+buy/sell recommendations
+```

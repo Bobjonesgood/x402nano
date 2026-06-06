@@ -1,6 +1,14 @@
-# LeadNestAI API Overview
+# x402nano API Overview
 
-This API is a commercial proof-of-concept for machine-payable lead intelligence.
+x402nano is a machine-payable Polymarket market intelligence API for autonomous agents, bots, and API builders.
+
+It exposes a free discovery route and a paid read-only market brief route. The paid route uses the x402 flow:
+
+```txt
+HTTP 402 -> X-PAYMENT -> Base USDC -> unlocked JSON brief
+```
+
+x402nano is informational only. It does not execute trades, custody funds, provide betting advice, or make buy/sell recommendations.
 
 ## Base URL
 
@@ -10,130 +18,112 @@ https://x402nano.onrender.com
 
 ## Discovery
 
-```txt
-GET /.well-known/x402.json
-GET /api/discover
+```bash
+curl https://x402nano.onrender.com/.well-known/x402.json
 ```
 
-Returns the machine-readable manifest for buyers and agents.
+Returns the machine-readable x402 manifest, seller metadata, supported network, price, payment header, and paid resource.
 
-## Version
+## Free Trending Markets
 
-```txt
-GET /api/version
+```bash
+curl "https://x402nano.onrender.com/api/markets/trending"
 ```
 
-Returns release metadata, payment mode, settlement mode, seller wallet status, and build metadata.
+Returns public Polymarket market candidates that agents can inspect before paying for a brief.
 
-## Health
+## Paid Market Brief
 
-```txt
-GET /api/health
+```bash
+curl -i "https://x402nano.onrender.com/api/markets/brief?slug=will-gideon-saar-be-the-next-prime-minister-of-israel"
 ```
 
-Returns service status, payment mode, settlement mode, quote counts, receipt counts, and event count.
-
-## Pricing
-
-```txt
-GET /api/pricing
-```
-
-Returns price, asset, network, seller wallet, payment header, and provider details.
-
-## Schema
-
-```txt
-GET /api/schema
-```
-
-Returns the response schema for the protected LeadNestAI premium pack.
-
-## Protected Lead Intelligence Pack
-
-```txt
-GET /api/lead-intelligence/premium-pack
-```
-
-Without payment, returns:
+Without payment, the route returns:
 
 ```txt
 402 Payment Required
 ```
 
-With valid `X-PAYMENT`, returns:
+The response includes payment requirements similar to:
 
-- receipt
-- premium lead intelligence records
-
-The x402 v2 payment challenge declares Bazaar discovery metadata on the paid route:
-
-```txt
-GET method metadata
-semantic resource description
-output example
-output schema
+```json
+{
+  "error": "Payment required",
+  "paymentRequirements": {
+    "x402Version": "1",
+    "scheme": "exact",
+    "network": "eip155:8453",
+    "asset": "USDC",
+    "amount": "0.05",
+    "payTo": "0x4cc3831eB479aCFb6D44631d4a30814508Cf52d3",
+    "resource": "/api/markets/brief?slug=will-gideon-saar-be-the-next-prime-minister-of-israel",
+    "description": "x402nano read-only Polymarket market intelligence brief. Informational only; no trading, betting, or financial advice.",
+    "mimeType": "application/json"
+  }
+}
 ```
 
-The Bazaar description stays narrow:
+With a valid x402 payment payload, the buyer retries the same request with:
 
-```txt
-machine-payable lead intelligence pack for service-business sales automation
+```bash
+curl "https://x402nano.onrender.com/api/markets/brief?slug=will-gideon-saar-be-the-next-prime-minister-of-israel" \
+  -H "X-PAYMENT: <signed-x402-payment>"
 ```
 
-The built-in pack is a demo pack. Base mainnet paid access is blocked until the seller host sets:
+Successful paid responses include a receipt and unlocked JSON:
 
-```txt
-LEAD_PACK_MODE=production
-PREMIUM_LEAD_PACK_JSON=<non-demo paid lead intelligence records>
+```json
+{
+  "status": "unlocked",
+  "receipt": {
+    "id": "receipt-id-after-payment",
+    "payer": "external-x402-client",
+    "seller": "0x4cc3831eB479aCFb6D44631d4a30814508Cf52d3",
+    "amount": "0.05",
+    "asset": "USDC",
+    "network": "eip155:8453"
+  },
+  "data": {
+    "briefType": "read-only-market-intelligence",
+    "status": "ok",
+    "market": {
+      "slug": "will-gideon-saar-be-the-next-prime-minister-of-israel"
+    }
+  }
+}
 ```
 
-Production records must include reviewed source metadata:
+## Pricing
 
-```txt
-sourceType
-sourceUrls
-sourceEvidence
-reviewedAt
+```bash
+curl https://x402nano.onrender.com/api/pricing
 ```
 
-Example record fields:
+Current paid brief price:
 
 ```txt
-businessName
-industry
-location
-contactPerson
-estimatedJobValue
-buyingIntent
-painPoints
-recommendedOpener
-confidenceScore
-sourceType
-sourceUrls
-sourceEvidence
-reviewedAt
-contactPolicy
-lastUpdated
+0.05 USDC
 ```
 
-## Sandbox Payment Signer
+Network:
 
 ```txt
-POST /api/payments/sign
+Base mainnet, eip155:8453
 ```
 
-Sandbox-only endpoint that creates a demo payment payload for the current payment requirements.
-
-This is disabled in facilitator mode.
-
-## Browser Wallet Message
+Seller wallet:
 
 ```txt
-POST /api/payments/browser-wallet-message
+0x4cc3831eB479aCFb6D44631d4a30814508Cf52d3
 ```
 
-Sandbox-only endpoint that prepares a message for browser wallet signing.
+## Schema
+
+```bash
+curl https://x402nano.onrender.com/api/schema
+```
+
+Returns the JSON schema for the paid market brief response.
 
 ## Receipts
 
@@ -141,108 +131,58 @@ Sandbox-only endpoint that prepares a message for browser wallet signing.
 GET /api/receipts/{receiptId}
 ```
 
-Returns a receipt if it is still retained in memory.
+Receipts are retained in server memory for operational proof and debugging. The on-chain USDC transfer is the durable payment proof.
 
-## LeadNestAI Handoff Status
+## Mainnet Proof
 
-```txt
-GET /api/leadnestai/status
-```
-
-Returns whether the manual LeadNestAI handoff bridge is enabled and configured.
-
-## Manual LeadNestAI Handoff
+x402nano completed a real paid unlock on Base mainnet.
 
 ```txt
-POST /api/leadnestai/handoff
+Receipt: f1ffa2f5cabf94c3
+Amount: 0.05 USDC
+Network: Base mainnet, eip155:8453
+USDC transfer tx: 0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1
+BaseScan: https://basescan.org/tx/0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1
 ```
 
-Sandbox-only endpoint that forwards one selected unlocked lead to LeadNestAI.
-
-The browser calls this x402 server endpoint. The x402 server then calls:
+The proof verified:
 
 ```txt
-POST {LEADNESTAI_API_URL}/api/integrations/x402/leads
-Authorization: Bearer {LEADNESTAI_INGEST_SECRET}
+HTTP 402 challenge issued
+X-PAYMENT retry accepted
+0.05 USDC settled on Base mainnet
+receipt generated
+read-only market brief JSON unlocked
 ```
 
-Request:
+## Public Boundaries
 
-```json
-{
-  "receiptId": "receipt-id-from-unlock",
-  "externalLeadId": "lnai_pack_001"
-}
-```
-
-Forwarded payload fields:
+x402nano provides:
 
 ```txt
-source
-receiptId
-unlockMode
-externalLeadId
-businessName
-industry
-location
-estimatedJobValue
-buyingIntent
-painPoints
-recommendedOpener
-confidenceScore
-idempotencyKey
-dedupeKey
+read-only Polymarket public-data summaries
+machine-readable JSON
+x402 payment challenge and receipt flow
 ```
 
-The idempotency key is:
+x402nano does not provide:
 
 ```txt
-source + receiptId + externalLeadId
+trading execution
+custody
+betting advice
+buy/sell recommendations
+guaranteed outcomes
+user accounts
+API keys
 ```
 
-The business dedupe key is:
+## Operational Endpoints
 
 ```txt
-businessName + location + industry
-```
-
-## Events
-
-```txt
+GET /api/version
+GET /api/health
 GET /api/events
 ```
 
-Returns the latest retained event log entries:
-
-- quote issued
-- payment attempted
-- payment verified
-- lead pack unlocked
-- receipt generated
-- lead handoff attempted
-- lead handoff succeeded
-- lead handoff failed
-
-This is a future metering/logging structure. It is not a production analytics database yet.
-
-## Legacy Endpoint
-
-The old endpoint still resolves as a compatibility alias:
-
-```txt
-GET /api/premium-leads
-```
-
-New demos and docs should use:
-
-```txt
-GET /api/lead-intelligence/premium-pack
-```
-
-## Current Mode
-
-```txt
-sandbox settlement
-no real funds
-real settlement prepared, not enabled
-```
+`/api/events` is an in-memory operational log. It is useful for recent quote/payment/unlock debugging, but it is not a production analytics database.

@@ -1,57 +1,158 @@
-# Trust Statement
+# x402nano Trust And Safety
 
-This project follows one rule:
+x402nano follows one rule:
 
 ```txt
 Real proof. Clear boundaries. No fake claims.
 ```
 
-## Proven
+## What Is Proven
 
-- The x402 seller publishes discovery and price metadata.
-- Unpaid protected access returns `402 Payment Required`.
-- The seller accepts the `X-PAYMENT` retry contract and returns receipts after verification.
-- Base Sepolia facilitator settlement was proven with test USDC.
-- A live x402 unlock can hand a selected record into LeadNestAI with dedupe and no automatic outreach.
-- The live mainnet seller now exposes a reviewed production lead pack and a Base mainnet payment challenge.
+x402nano has proven the core x402 flow on Base mainnet:
 
-## Not Proven Yet
+```txt
+HTTP 402 challenge
+X-PAYMENT retry
+0.05 USDC settlement on Base mainnet
+receipt generation
+read-only Polymarket market brief unlock
+```
 
-- A customer has paid for the Base mainnet pack.
-- A controlled self-test mainnet paid unlock has completed.
-- Market demand, retention, refunds, compliance posture, and scaling economics are solved.
+Proof:
+
+```txt
+Receipt: f1ffa2f5cabf94c3
+Transaction: 0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1
+BaseScan: https://basescan.org/tx/0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1
+```
+
+## What Is Not Claimed
+
+x402nano does not claim:
+
+```txt
+guaranteed outcomes
+market outcomes
+investment advice
+betting advice
+buy/sell recommendations
+customer adoption
+repeat revenue
+```
 
 ## Product Boundary
 
-The built-in demo pack cannot be charged on Base mainnet. Mainnet product mode requires production records with reviewed source metadata:
+x402nano is:
 
 ```txt
-sourceType
-sourceUrls
-sourceEvidence
-reviewedAt
+machine-payable market intelligence
+read-only Polymarket public-data summaries
+JSON for agents and bots
+x402 payment proof infrastructure
 ```
 
-The current starter pack uses public official-business-site fit signals. It does not claim that listed businesses have agreed to buy anything.
-
-## Safety Boundary
-
-- Buyer private keys stay local.
-- Render stores seller-side configuration only.
-- LeadNestAI handoff stays manual and selected-lead-only.
-- Automatic outreach remains outside this first paid-endpoint launch.
-
-## Verify
-
-```powershell
-npm.cmd run settlement:check
-```
-
-Read:
+x402nano is not:
 
 ```txt
-MAINNET_LAUNCH_CHECKLIST.md
-PRODUCTION_LEAD_PACK.md
-BASE_SEPOLIA_REAL_SETTLEMENT_PROOF.md
-X402_TO_LEADNESTAI_LIVE_PROOF.md
+a broker
+a wallet
+a custody product
+a betting product
+a trading bot
+a trade execution service
+a financial advisor
+```
+
+## Payment Boundary
+
+Payments are handled through the x402 flow:
+
+```txt
+buyer/client signs payment
+request retries with X-PAYMENT
+facilitator verifies and settles
+Base mainnet USDC moves to seller wallet
+```
+
+x402nano does not custody buyer funds and does not require user accounts or API keys.
+
+## Data Boundary
+
+x402nano uses public Polymarket market data for informational summaries. Market data can be delayed, incomplete, unavailable, or interpreted differently by different clients.
+
+The API output should be treated as:
+
+```txt
+market context
+public data summary
+machine-readable brief
+```
+
+It should not be treated as:
+
+```txt
+trading instruction
+betting advice
+financial recommendation
+guaranteed result
+```
+
+## Operational Boundary
+
+The `/api/events` endpoint is an in-memory operational log for recent quotes, payments, and unlocks. It can reset after deploys or restarts.
+
+Durable proof should rely on:
+
+```txt
+BaseScan transaction
+on-chain USDC transfer
+saved proof notes
+receipt id when retained
+```
+
+## Launch Scope
+
+Current scope:
+
+```txt
+GET /api/markets/trending
+GET /api/markets/brief?slug=...
+0.05 USDC per paid brief
+Base mainnet
+HTTP 402
+X-PAYMENT
+receipt + JSON unlock
+```
+
+Explicitly out of scope:
+
+```txt
+Telegram
+dashboard
+user accounts
+trading execution
+custody
+betting advice
+buy/sell recommendations
+guaranteed language
+```
+
+## Verification Commands
+
+Read-only endpoint check:
+
+```bash
+curl "https://x402nano.onrender.com/api/markets/brief?slug=will-gideon-saar-be-the-next-prime-minister-of-israel" -i
+```
+
+Expected result:
+
+```txt
+402 Payment Required
+```
+
+Proof transaction:
+
+```txt
+https://basescan.org/tx/0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1
 ```
