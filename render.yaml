@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: payment-aware-sandbox
+    name: x402nano
     runtime: node
     plan: free
     buildCommand: npm install && npm run build
@@ -18,20 +18,6 @@ services:
         value: USDC
       - key: PRICE_USDC
         value: "0.05"
-      - key: LEAD_PACK_MODE
-        value: production
-      - key: PREMIUM_LEAD_PACK_JSON
-        sync: false
-      - key: LEAD_HANDOFF_ENABLED
-        value: "false"
-      - key: LEADNESTAI_API_URL
-        value: https://www.leadnestai.net
-      - key: LEADNESTAI_SOURCE_ID
-        value: x402nano
-      - key: AI_MODEL
-        value: llama-3.1-8b-instant
-      - key: LEADNESTAI_INGEST_SECRET
-        sync: false
       - key: CDP_API_KEY_ID
         sync: false
       - key: CDP_API_KEY_SECRET

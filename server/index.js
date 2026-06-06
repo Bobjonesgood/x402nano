@@ -7,7 +7,6 @@ import { fileURLToPath } from "node:url";
 import { encodePaymentRequiredHeader, encodePaymentResponseHeader } from "@x402/core/http";
 import { DEFAULT_STABLECOINS } from "@x402/evm";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
-import { buildLeadHandoffPayload, leadNestAIConfig, leadNestAIReadiness, submitLeadToLeadNestAI } from "./leadnestai-client.js";
 import { buildMarketBrief, marketPreview } from "./market-briefs.js";
 import { createFacilitatorProvider, createSandboxProvider } from "./payment-providers.js";
 import { fetchMarketBySlug, fetchMarketPriceHistory, fetchTrendingMarkets, polymarketStatus } from "./polymarket-client.js";
@@ -256,7 +255,6 @@ const issuedRequirements = new Map();
 const usedNonces = new Set();
 const rateLimits = new Map();
 const eventLog = [];
-const leadNestAI = leadNestAIConfig();
 
 function isProtectedResource(pathname) {
   return pathname === RESOURCE_PATH || pathname === LEGACY_RESOURCE_PATH || pathname === MARKET_BRIEF_PATH;
@@ -410,8 +408,8 @@ function canonicalPayment(requirements, payer = BUYER_ADDRESS) {
 
 function walletPaymentMessage(requirements, payer = BUYER_ADDRESS) {
   return [
-    "LeadNestAI Payment-Aware Sandbox",
-    "Sign this message to authorize sandbox access to the premium lead intelligence pack.",
+    "x402nano Payment Authorization",
+    "Sign this message to authorize sandbox access to the protected market brief.",
     "",
     `Payer: ${payer}`,
     `Seller: ${requirements.payTo}`,
@@ -796,60 +794,6 @@ function publicReceipt(receipt) {
   };
 }
 
-async function submitUnlockedLeadsToLeadNestAI(receipt, leads) {
-  if (!leadNestAI.enabled || !leadNestAI.autoHandoffOnUnlock) {
-    return {
-      enabled: leadNestAI.enabled,
-      autoHandoffOnUnlock: leadNestAI.autoHandoffOnUnlock,
-      submitted: 0,
-      results: []
-    };
-  }
-
-  const results = [];
-  for (const lead of leads) {
-    const payload = buildLeadHandoffPayload({ config: leadNestAI, receipt, lead });
-    logEvent("lead_handoff_attempted", {
-      receiptId: payload.receiptId,
-      externalLeadId: payload.externalLeadId,
-      idempotencyKey: payload.idempotencyKey,
-      target: leadNestAI.apiUrl || "not_configured",
-      mode: paymentProvider.mode,
-      trigger: "paid_unlock"
-    });
-
-    const result = await submitLeadToLeadNestAI({ config: leadNestAI, payload });
-    logEvent(result.ok ? "lead_handoff_succeeded" : "lead_handoff_failed", {
-      receiptId: payload.receiptId,
-      externalLeadId: payload.externalLeadId,
-      idempotencyKey: payload.idempotencyKey,
-      status: result.status,
-      statusCode: result.statusCode,
-      leadId: result.leadId,
-      duplicate: result.duplicate,
-      reason: result.reason,
-      trigger: "paid_unlock"
-    });
-
-    results.push({
-      externalLeadId: payload.externalLeadId,
-      ok: result.ok,
-      status: result.status,
-      statusCode: result.statusCode,
-      leadId: result.leadId,
-      duplicate: result.duplicate ?? false,
-      reason: result.reason
-    });
-  }
-
-  return {
-    enabled: true,
-    autoHandoffOnUnlock: true,
-    submitted: results.filter(result => result.ok).length,
-    results
-  };
-}
-
 function clientId(req) {
   return req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "unknown";
 }
@@ -873,7 +817,6 @@ function leadPackAdminSummary(filter = { active: false }) {
     product: leadPackStatus(),
     filter,
     matchedRecords: records.length,
-    leadNestAI: leadNestAIReadiness(leadNestAI),
     records: records.map(record => ({
       id: record.id,
       businessName: record.businessName,
@@ -939,9 +882,7 @@ function paymentRequirements(resource = RESOURCE_PATH, filter = { active: false 
     resource,
     description: isMarketBrief
       ? "x402nano read-only Polymarket market intelligence brief. Informational only; no trading, betting, or financial advice."
-      : filter.active
-      ? `LeadNestAI local lead intelligence pack for ${[filter.city, filter.state, filter.zip, filter.q].filter(Boolean).join(" ")}`
-      : "LeadNestAI premium lead intelligence pack for sales agents and service businesses",
+      : "Legacy paid resource retired. Use /api/markets/brief?slug=... for x402nano market briefs.",
     mimeType: "application/json",
     maxTimeoutSeconds: Math.floor(PAYMENT_TTL_MS / 1000),
     expiresAt: new Date(Date.now() + PAYMENT_TTL_MS).toISOString(),
@@ -1020,7 +961,7 @@ function officialPaymentRequired(req, requirements, error = "Payment required") 
       url: `${origin}${requirements.resource}`,
       description: isMarketBrief
         ? "Machine-payable read-only Polymarket market intelligence brief. Informational only; no trading, betting, or financial advice."
-        : "Machine-payable lead intelligence pack for service-business sales automation. Reviewed public-source fit signals unlock after verified x402 payment.",
+        : "Legacy paid resource retired. Use the x402nano Polymarket market brief endpoint.",
       mimeType: requirements.mimeType,
       serviceName: API_NAME,
       tags: isMarketBrief
@@ -1061,7 +1002,7 @@ function normalizeRequirements(requirements, payment = {}) {
     amount: isFacilitatorUsdcRequirement ? PRICE_USDC : requirements.amount,
     payTo: requirements.payTo,
     resource: requirements.resource ?? requirements.extra?.resource ?? RESOURCE_PATH,
-    description: requirements.description ?? "LeadNestAI premium lead intelligence pack for sales agents and service businesses",
+    description: requirements.description ?? "x402nano protected market brief",
     mimeType: requirements.mimeType ?? "application/json",
     maxTimeoutSeconds: requirements.maxTimeoutSeconds ?? Math.floor(PAYMENT_TTL_MS / 1000),
     expiresAt: requirements.expiresAt ?? requirements.extra?.expiresAt,
@@ -1379,15 +1320,6 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (req.method === "GET" && url.pathname === "/api/leadnestai/status") {
-    return json(res, 200, {
-      status: "ok",
-      handoff: leadNestAIReadiness(leadNestAI),
-      settlementMode: paymentProvider.mode,
-      automaticOutreach: false
-    });
-  }
-
   if (req.method === "GET" && url.pathname === ADMIN_LEAD_PACK_PATH) {
     if (!adminAuthorized(req)) {
       return json(res, ADMIN_TOKEN ? 401 : 404, {
@@ -1399,54 +1331,6 @@ const server = http.createServer(async (req, res) => {
     }
 
     return json(res, 200, leadPackAdminSummary(locationFilterFromUrl(url)));
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/leadnestai/handoff") {
-    try {
-      const body = await readBody(req);
-      const receiptId = body.receiptId ?? body.receipt?.id;
-      const externalLeadId = body.externalLeadId ?? body.lead?.id;
-      const receipt = payments.get(receiptId);
-      const lead = premiumLeadPack.find(record => record.id === externalLeadId);
-
-      if (!receipt) return json(res, 404, { error: "Receipt not found. Unlock the lead pack before handoff." });
-      if (!lead) return json(res, 404, { error: "Lead not found in the unlocked premium pack." });
-
-      const payload = buildLeadHandoffPayload({ config: leadNestAI, receipt, lead });
-      logEvent("lead_handoff_attempted", {
-        receiptId: payload.receiptId,
-        externalLeadId: payload.externalLeadId,
-        idempotencyKey: payload.idempotencyKey,
-        target: leadNestAI.apiUrl || "not_configured",
-        mode: paymentProvider.mode
-      });
-
-      const result = await submitLeadToLeadNestAI({ config: leadNestAI, payload });
-      logEvent(result.ok ? "lead_handoff_succeeded" : "lead_handoff_failed", {
-        receiptId: payload.receiptId,
-        externalLeadId: payload.externalLeadId,
-        idempotencyKey: payload.idempotencyKey,
-        status: result.status,
-        statusCode: result.statusCode,
-        leadId: result.leadId,
-        duplicate: result.duplicate,
-        reason: result.reason
-      });
-
-      return json(res, result.statusCode ?? (result.ok ? 200 : 502), {
-        status: result.status,
-        ok: result.ok,
-        duplicate: result.duplicate ?? false,
-        leadId: result.leadId,
-        payload,
-        leadNestAI: result.response ?? { reason: result.reason }
-      });
-    } catch {
-      logEvent("lead_handoff_failed", {
-        reason: "Invalid LeadNestAI handoff request."
-      });
-      return json(res, 400, { error: "Invalid LeadNestAI handoff request." });
-    }
   }
 
   if (req.method === "GET" && url.pathname.startsWith("/api/receipts/")) {
@@ -1511,28 +1395,12 @@ const server = http.createServer(async (req, res) => {
     let matchedLeadPack = [];
 
     if (isLeadPack) {
-      const productBlocker = mainnetProductBlocker();
-      if (productBlocker) {
-        return json(res, 503, {
-          error: "Mainnet paid product is not ready.",
-          reason: productBlocker,
-          product: leadPackStatus()
-        });
-      }
-
-      matchedLeadPack = filterLeadPack(filter);
-      if (filter.active && matchedLeadPack.length === 0) {
-        logEvent("lead_pack_filter_empty", {
-          resource,
-          filter
-        });
-        return json(res, 404, {
-          error: "No local leads available",
-          reason: "No active lead records currently match the requested city, state, zip, or query. Try a nearby market or broader filter.",
-          filter,
-          product: leadPackStatus()
-        });
-      }
+      return json(res, 410, {
+        error: "Legacy resource retired",
+        status: "retired",
+        replacement: "/api/markets/brief?slug=...",
+        service: API_NAME
+      });
     }
 
     if (isMarketBrief && !MARKET_BRIEF_ENABLED) {
@@ -1606,32 +1474,11 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    logEvent("lead_pack_unlocked", {
-      receiptId: verification.receipt.id,
-      resource,
-      filter,
-      records: matchedLeadPack.length
-    });
-
-    const leadNestAIHandoff = await submitUnlockedLeadsToLeadNestAI(verification.receipt, matchedLeadPack);
-
-    const paymentResponse = {
-      success: true,
-      transaction: verification.receipt.transaction ?? verification.receipt.id,
-      network: verification.receipt.network,
-      amount: verification.receipt.amount,
-      payer: verification.receipt.payer
-    };
-
-    return json(res, 200, {
-      status: "unlocked",
-      receipt: publicReceipt(verification.receipt),
-      filter,
-      data: matchedLeadPack,
-      leadNestAIHandoff
-    }, {
-      "PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse),
-      "X-PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse)
+    return json(res, 410, {
+      error: "Legacy resource retired",
+      status: "retired",
+      replacement: "/api/markets/brief?slug=...",
+      service: API_NAME
     });
   }
 

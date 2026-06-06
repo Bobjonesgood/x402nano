@@ -8,7 +8,7 @@ const ROOT_DIR = path.resolve(__dirname, "..");
 const DEFAULT_OUTPUT_FILE = path.resolve(ROOT_DIR, "data/production-lead-pack.runtime.json");
 const DEFAULT_MARKET_FILE = path.resolve(ROOT_DIR, "data/lead-engine-markets.json");
 const DEFAULT_INTERVAL_MS = 6 * 60 * 60 * 1000;
-const USER_AGENT = process.env.LEAD_ENGINE_USER_AGENT ?? "LeadNestAI-x402nano/0.1 public-source lead research";
+const USER_AGENT = process.env.LEAD_ENGINE_USER_AGENT ?? "x402nano-legacy-lead-engine/0.1 public-source research";
 
 const realEstateTerms = [
   "real estate",
