@@ -8,7 +8,7 @@ Use this file for Agentic.Market, x402scan, x402 ecosystem directories, GitHub l
 Name: x402nano
 Category: Machine-payable market intelligence API
 One-line description: Polymarket intelligence for autonomous agents, paid per brief with x402.
-Long description: x402nano is a live x402-protected Polymarket market intelligence API. Agents can inspect free trending markets, request a paid read-only market brief, receive an HTTP 402 challenge, retry with X-PAYMENT, pay 0.05 USDC on Base mainnet, and unlock structured JSON plus a receipt.
+Long description: x402nano is a live x402-protected Polymarket market intelligence API. Agents can inspect free trending markets, request a paid read-only market brief, receive an HTTP 402 challenge, retry with X-PAYMENT, pay 0.05 USDC on Base mainnet, and unlock structured JSON with 24h market movement, liquidity context, resolution context, safe descriptive scores, and a receipt.
 ```
 
 ## URLs
@@ -83,7 +83,7 @@ No API keys.
 ```txt
 x402nano is a machine-payable Polymarket market intelligence API for autonomous agents and bots.
 
-Agents can call a free trending endpoint, choose a market slug, then request a paid read-only market brief. The paid route returns an HTTP 402 challenge and unlocks structured JSON after a valid X-PAYMENT retry. Price is 0.05 USDC on Base mainnet.
+Agents can call a free trending endpoint, choose a market slug, then request a paid read-only market brief. The paid route returns an HTTP 402 challenge and unlocks structured JSON after a valid X-PAYMENT retry. The brief includes 24h market movement, liquidity context, resolution context, and safe descriptive scores. Price is 0.05 USDC on Base mainnet.
 
 This is informational market context only: no custody, no trading execution, no betting advice, and no buy/sell recommendations.
 

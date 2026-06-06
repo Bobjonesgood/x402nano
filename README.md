@@ -6,6 +6,8 @@ x402nano serves read-only Polymarket market briefs behind an HTTP 402 payment fl
 
 This is market intelligence infrastructure, not trading advice.
 
+Paid briefs include 24h market movement, volume/liquidity context, resolution context, watch points, and safe descriptive scores. They do not include trading execution, custody, betting advice, or buy/sell recommendations.
+
 ## Live Endpoint
 
 ```txt
@@ -115,6 +117,24 @@ Successful paid responses include a receipt and the market brief payload:
     "status": "ok",
     "market": {
       "slug": "will-gideon-saar-be-the-next-prime-minister-of-israel"
+    },
+    "movement": {
+      "window": "24h",
+      "direction": "flat",
+      "trajectory": []
+    },
+    "metrics": {
+      "volume24h": "17,260.91",
+      "liquidity": "81,697.04"
+    },
+    "resolution": {
+      "endDate": "2026-12-31T00:00:00Z"
+    },
+    "scores": {
+      "marketMovementScore": 45,
+      "attentionScore": 70,
+      "dataCompletenessScore": 100,
+      "unusualMovementFlag": false
     }
   }
 }

@@ -88,10 +88,37 @@ Successful paid responses include a receipt and unlocked JSON:
     "status": "ok",
     "market": {
       "slug": "will-gideon-saar-be-the-next-prime-minister-of-israel"
+    },
+    "movement": {
+      "window": "24h",
+      "available": true,
+      "direction": "flat",
+      "trajectory": [
+        {
+          "timestamp": "2026-06-06T12:00:00.000Z",
+          "probability": "0.995"
+        }
+      ]
+    },
+    "metrics": {
+      "volume24h": "17,260.91",
+      "liquidity": "81,697.04"
+    },
+    "resolution": {
+      "endDate": "2026-12-31T00:00:00Z",
+      "source": "Use the Polymarket market page and rules for resolution criteria."
+    },
+    "scores": {
+      "marketMovementScore": 45,
+      "attentionScore": 70,
+      "dataCompletenessScore": 100,
+      "unusualMovementFlag": false
     }
   }
 }
 ```
+
+The paid brief is intentionally descriptive. Movement, liquidity, resolution context, and scores are public-data context for agents. They are not predictions, betting advice, or buy/sell recommendations.
 
 ## Pricing
 

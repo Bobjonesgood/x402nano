@@ -10,7 +10,7 @@ import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { buildLeadHandoffPayload, leadNestAIConfig, leadNestAIReadiness, submitLeadToLeadNestAI } from "./leadnestai-client.js";
 import { buildMarketBrief, marketPreview } from "./market-briefs.js";
 import { createFacilitatorProvider, createSandboxProvider } from "./payment-providers.js";
-import { fetchMarketBySlug, fetchTrendingMarkets, polymarketStatus } from "./polymarket-client.js";
+import { fetchMarketBySlug, fetchMarketPriceHistory, fetchTrendingMarkets, polymarketStatus } from "./polymarket-client.js";
 
 const PORT = Number(process.env.PORT ?? 4021);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -570,12 +570,63 @@ const marketBriefSchema = {
             liquidity: { type: "number" }
           }
         },
-        summary: { type: "string" },
-        signals: {
+        movement: {
+          type: "object",
+          properties: {
+            window: { type: "string" },
+            source: { type: "string" },
+            available: { type: "boolean" },
+            outcome: { type: ["string", "null"] },
+            start: { type: ["object", "null"] },
+            end: { type: ["object", "null"] },
+            absoluteChange: { type: ["string", "null"] },
+            relativeChange: { type: ["string", "null"] },
+            direction: { type: "string" },
+            trajectory: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  timestamp: { type: "string" },
+                  probability: { type: ["string", "null"] }
+                }
+              }
+            }
+          }
+        },
+        metrics: {
+          type: "object",
+          properties: {
+            volume: { type: ["string", "null"] },
+            volume24h: { type: ["string", "null"] },
+            volume7d: { type: ["string", "null"] },
+            liquidity: { type: ["string", "null"] }
+          }
+        },
+        resolution: {
+          type: "object",
+          properties: {
+            endDate: { type: ["string", "null"] },
+            daysUntilEnd: { type: ["number", "null"] },
+            source: { type: "string" },
+            note: { type: "string" }
+          }
+        },
+        scores: {
+          type: "object",
+          properties: {
+            marketMovementScore: { type: "number" },
+            attentionScore: { type: "number" },
+            dataCompletenessScore: { type: "number" },
+            unusualMovementFlag: { type: "boolean" },
+            note: { type: "string" }
+          }
+        },
+        watchPoints: {
           type: "array",
           items: { type: "string" }
         },
-        caveats: {
+        boundaries: {
           type: "array",
           items: { type: "string" }
         }
@@ -602,9 +653,42 @@ const bazaarMarketBriefOutputExample = {
       slug: "will-gideon-saar-be-the-next-prime-minister-of-israel",
       question: "Will Gideon Saar be the next Prime Minister of Israel?"
     },
-    summary: "Read-only market brief for agents and bots. Informational only; no trading, betting, or financial advice.",
-    signals: ["public Polymarket market data", "price/liquidity context", "market metadata"],
-    caveats: ["not trading advice", "not financial advice", "not a recommendation to buy or sell"]
+    movement: {
+      window: "24h",
+      source: "polymarket:clob",
+      available: true,
+      outcome: "Yes",
+      start: { timestamp: "2026-06-05T00:00:00.000Z", probability: "0.580" },
+      end: { timestamp: "2026-06-06T00:00:00.000Z", probability: "0.630" },
+      absoluteChange: "0.050",
+      relativeChange: "+8.6%",
+      direction: "up",
+      trajectory: [
+        { timestamp: "2026-06-05T00:00:00.000Z", probability: "0.580" },
+        { timestamp: "2026-06-06T00:00:00.000Z", probability: "0.630" }
+      ]
+    },
+    metrics: {
+      volume: "120,000",
+      volume24h: "8,500",
+      volume7d: "42,000",
+      liquidity: "18,000"
+    },
+    resolution: {
+      endDate: "2026-12-31T00:00:00.000Z",
+      daysUntilEnd: 208,
+      source: "Use the Polymarket market page and rules for resolution criteria.",
+      note: "Resolution context is informational and should be checked against the official market rules."
+    },
+    scores: {
+      marketMovementScore: 72,
+      attentionScore: 64,
+      dataCompletenessScore: 88,
+      unusualMovementFlag: true,
+      note: "Scores are descriptive heuristics from public data availability, movement size, volume, and liquidity. They are not predictions or recommendations."
+    },
+    watchPoints: ["Compare movement with liquidity before treating the snapshot as meaningful context."],
+    boundaries: ["Read-only public market data summary.", "No trading execution.", "No custody of user funds.", "No buy/sell/bet recommendation."]
   }
 };
 
@@ -1489,7 +1573,8 @@ const server = http.createServer(async (req, res) => {
     if (isMarketBrief) {
       try {
         const market = await fetchMarketBySlug(url.searchParams.get("slug"));
-        const brief = buildMarketBrief(market);
+        const priceHistory24h = await fetchMarketPriceHistory(market, { interval: "1d", fidelity: 60 });
+        const brief = buildMarketBrief(market, { priceHistory24h });
         const paymentResponse = {
           success: true,
           transaction: verification.receipt.transaction ?? verification.receipt.id,
