@@ -1,17 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Bot, CheckCircle2, Copy, DatabaseZap, ExternalLink, FileText, Globe2, MapPin, Radio, ReceiptText, ShieldCheck, WalletCards, Zap } from "lucide-react";
+import { Activity, Bot, CheckCircle2, Copy, DatabaseZap, ExternalLink, FileText, Globe2, Radio, ReceiptText, ShieldCheck, WalletCards, Zap } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
-const paidEndpoint = "https://x402nano.onrender.com/api/lead-intelligence/premium-pack";
+const proofSlug = "will-gideon-saar-be-the-next-prime-minister-of-israel";
+const freeEndpoint = "https://x402nano.onrender.com/api/markets/trending";
+const paidEndpoint = `https://x402nano.onrender.com/api/markets/brief?slug=${proofSlug}`;
 const discoveryEndpoint = "https://x402nano.onrender.com/.well-known/x402.json";
-
-const packPlans = [
-  ["Starter Sample", "$29", "5 local lead briefs", "Best for testing one city or niche before buying a bigger pack."],
-  ["Market Pack", "$97", "25 local lead briefs", "A focused city, zip, county, or investor/agent prospecting pack."],
-  ["Market Sprint", "$197", "60 local lead briefs", "More coverage for agents, teams, brokers, or investors working a market."],
-  ["Custom Build", "$297", "priority local research", "A deeper market sprint with notes, categories, and outreach angles."]
-];
+const schemaEndpoint = "https://x402nano.onrender.com/api/schema";
+const proofTx = "https://basescan.org/tx/0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1";
 
 function shortAddress(address) {
   if (!address) return "not configured";
@@ -49,28 +46,13 @@ function App() {
   const [version, setVersion] = useState(null);
   const [challenge, setChallenge] = useState(null);
   const [error, setError] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [zip, setZip] = useState("");
-
-  const localEndpointPath = useMemo(() => {
-    const params = new URLSearchParams();
-    if (city.trim()) params.set("city", city.trim());
-    if (state.trim()) params.set("state", state.trim());
-    if (zip.trim()) params.set("zip", zip.trim());
-    const query = params.toString();
-    return `/api/lead-intelligence/premium-pack${query ? `?${query}` : ""}`;
-  }, [city, state, zip]);
-
-  const localPaidEndpoint = `https://x402nano.onrender.com${localEndpointPath}`;
-  const targetMarket = [city.trim(), state.trim(), zip.trim()].filter(Boolean).join(", ") || "your local market";
 
   useEffect(() => {
     async function load() {
       try {
         const [versionResponse, challengeResponse] = await Promise.all([
           fetch("/api/version"),
-          fetch(localEndpointPath)
+          fetch(`/api/markets/brief?slug=${proofSlug}`)
         ]);
         setVersion(await versionResponse.json());
         setChallenge(await challengeResponse.json());
@@ -80,19 +62,16 @@ function App() {
     }
 
     load();
-  }, [localEndpointPath]);
+  }, []);
 
   const payment = version?.payment ?? {};
-  const product = version?.product ?? {};
-  const leadNestAI = version?.leadNestAI ?? {};
   const requirements = challenge?.paymentRequirements ?? {};
   const mainnetLive = payment.mode === "facilitator" && payment.network === "eip155:8453";
   const protectedBy402 = challenge?.error === "Payment required" && requirements.amount === "0.05";
-  const records = product.records ?? "--";
 
   const proofItems = useMemo(() => [
     ["Live price", `${payment.amount ?? "0.05"} ${payment.asset ?? "USDC"}`],
-    ["Network", payment.network === "eip155:8453" ? "Base Mainnet" : payment.network ?? "loading"],
+    ["Network", payment.network === "eip155:8453" ? "Base mainnet" : payment.network ?? "loading"],
     ["Settlement", payment.settlement ?? "loading"],
     ["Seller", shortAddress(payment.sellerWallet?.address)]
   ], [payment]);
@@ -107,76 +86,73 @@ function App() {
               <span />
               <span />
             </div>
-            <code>GET /api/lead-intelligence/premium-pack</code>
+            <code>GET /api/markets/brief?slug=...</code>
             <code className="warn">402 Payment Required</code>
+            <code>Retry with X-PAYMENT</code>
             <code>Pay 0.05 USDC on Base</code>
-            <code className="ok">Unlock {records} lead intelligence records</code>
+            <code className="ok">Unlock movement + liquidity JSON</code>
           </div>
         </div>
 
         <div className="heroCopy">
-          <span className="eyebrow">LeadNestAI local lead packs</span>
-          <h1>Qualified local real estate lead packs. No monthly subscription.</h1>
+          <span className="eyebrow">x402nano</span>
+          <h1>Machine-payable Polymarket intelligence for autonomous agents.</h1>
           <p>
-            Pick a city, zip, county, or niche. LeadNestAI turns public-source real estate signals into contact-ready lead briefs with evidence, suggested openers, confidence scores, and next steps.
+            Agents can inspect free trending markets, request a paid read-only market brief, receive an HTTP 402 challenge, pay 0.05 USDC on Base, and unlock structured JSON plus a receipt.
           </p>
           <div className="heroActions">
-            <a className="primaryButton" href={localPaidEndpoint} rel="noreferrer" target="_blank">
+            <a className="primaryButton" href={paidEndpoint} rel="noreferrer" target="_blank">
               <Zap size={18} />
-              Preview Local Availability
+              View 402 Challenge
             </a>
-            <a className="secondaryButton" href={discoveryEndpoint} rel="noreferrer" target="_blank">
-              <Globe2 size={18} />
-              API Proof
+            <a className="secondaryButton" href={proofTx} rel="noreferrer" target="_blank">
+              <ReceiptText size={18} />
+              Mainnet Proof
             </a>
           </div>
         </div>
       </section>
 
       <section className="liveStatus">
-        <StatusCard icon={Radio} label="Availability" value={protectedBy402 ? "pack available" : challenge?.error ?? "checking"} tone={protectedBy402 ? "good" : "warn"} />
+        <StatusCard icon={Radio} label="Paid route" value={protectedBy402 ? "protected by 402" : challenge?.error ?? "checking"} tone={protectedBy402 ? "good" : "warn"} />
         <StatusCard icon={WalletCards} label="Settlement" value={mainnetLive ? "Base mainnet" : payment.mode ?? "loading"} tone={mainnetLive ? "good" : "warn"} />
-        <StatusCard icon={DatabaseZap} label="Active inventory" value={`${records} records`} />
-        <StatusCard icon={ShieldCheck} label="LeadNestAI" value={leadNestAI.mode ?? "loading"} />
+        <StatusCard icon={DatabaseZap} label="Price" value={`${payment.amount ?? "0.05"} ${payment.asset ?? "USDC"}`} />
+        <StatusCard icon={ShieldCheck} label="Mode" value={payment.mode ?? "loading"} />
       </section>
 
       {error && <div className="error">{error}</div>}
 
       <section className="locationPanel">
         <div>
-          <span className="eyebrow">build your pack</span>
-          <h2>Request leads for the market you actually work.</h2>
-          <p>Enter a city, state, or zip to check local inventory. If no active records match that market, the system returns no-inventory instead of selling an empty pack.</p>
-        </div>
-        <div className="locationForm">
-          <label>
-            City
-            <input value={city} onChange={event => setCity(event.target.value)} placeholder="Tulsa" />
-          </label>
-          <label>
-            State
-            <input value={state} onChange={event => setState(event.target.value)} placeholder="OK" maxLength={2} />
-          </label>
-          <label>
-            Zip
-            <input value={zip} onChange={event => setZip(event.target.value)} placeholder="74103" inputMode="numeric" />
-          </label>
+          <span className="eyebrow">live routes</span>
+          <h2>One free endpoint. One paid endpoint.</h2>
+          <p>The product surface is intentionally narrow so builders can test whether machine-payable market briefs are useful without signing up for an account or API key.</p>
         </div>
         <div className="endpointBox local">
-          <span>Local paid endpoint</span>
-          <code>{localPaidEndpoint}</code>
-          <CopyButton value={localPaidEndpoint}>Copy local endpoint</CopyButton>
+          <span>Free trending markets</span>
+          <code>{freeEndpoint}</code>
+          <CopyButton value={freeEndpoint}>Copy free endpoint</CopyButton>
+        </div>
+        <div className="endpointBox local">
+          <span>Paid market brief</span>
+          <code>{paidEndpoint}</code>
+          <CopyButton value={paidEndpoint}>Copy paid endpoint</CopyButton>
         </div>
       </section>
 
       <section className="pricingPanel">
         <div className="pricingIntro">
-          <span className="eyebrow">simple pricing</span>
-          <h2>Pay per pack. No subscription needed.</h2>
-          <p>Start small, test the quality, then buy a larger local market sprint when you are ready.</p>
+          <span className="eyebrow">paid brief includes</span>
+          <h2>What changed in the last 24 hours?</h2>
+          <p>Paid JSON now includes objective market movement, liquidity context, resolution context, watch points, and safe descriptive scores.</p>
         </div>
         <div className="priceGrid">
-          {packPlans.map(([name, price, volume, detail]) => (
+          {[
+            ["Movement", "24h", "timestamped probability trajectory", "Public CLOB price history when available."],
+            ["Liquidity", "context", "volume and liquidity fields", "Helps agents judge whether movement is meaningful context."],
+            ["Resolution", "rules", "date and source context", "Points clients back to official market rules."],
+            ["Scores", "safe", "movement, attention, completeness", "Descriptive heuristics, not predictions or advice."]
+          ].map(([name, price, volume, detail]) => (
             <article className="priceCard" key={name}>
               <span>{name}</span>
               <strong>{price}</strong>
@@ -190,20 +166,20 @@ function App() {
       <section className="grid two">
         <article className="panel">
           <div className="panelTitle">
-            <MapPin size={20} />
-            <h2>What Each Lead Brief Includes</h2>
+            <Bot size={20} />
+            <h2>How The x402 Flow Works</h2>
           </div>
           <ul className="steps">
-            <li>Local market, city, zip, or niche context.</li>
-            <li>Public-source evidence so the lead is not a blind name.</li>
-            <li>Why the opportunity may be worth contacting.</li>
-            <li>Suggested opener and recommended next step.</li>
-            <li>Confidence score for quick prioritization.</li>
+            <li>Agent requests a paid market brief.</li>
+            <li>API returns <code>402 Payment Required</code>.</li>
+            <li>Agent retries with <code>X-PAYMENT</code>.</li>
+            <li>0.05 USDC settles on Base mainnet.</li>
+            <li>API returns receipt plus read-only JSON.</li>
           </ul>
           <div className="endpointBox">
-            <span>Local inventory proof endpoint</span>
-            <code>{localPaidEndpoint}</code>
-            <CopyButton value={localPaidEndpoint}>Copy endpoint</CopyButton>
+            <span>Discovery manifest</span>
+            <code>{discoveryEndpoint}</code>
+            <CopyButton value={discoveryEndpoint}>Copy discovery URL</CopyButton>
           </div>
         </article>
 
@@ -221,8 +197,8 @@ function App() {
             ))}
           </div>
           <div className="challengeBox">
-            <span>Current challenge</span>
-            <code>{requirements.amount ?? "0.05"} {requirements.asset ?? "USDC"} to {shortAddress(requirements.payTo)}</code>
+            <span>Proof receipt</span>
+            <code>f1ffa2f5cabf94c3</code>
           </div>
         </article>
       </section>
@@ -230,47 +206,44 @@ function App() {
       <section className="grid three">
         <article className="panel">
           <CheckCircle2 size={22} />
-          <h3>Built For Real Estate</h3>
-          <p>Agents, brokers, teams, investors, and wholesalers who already understand prospecting and want better local research.</p>
+          <h3>Read-only</h3>
+          <p>Market briefs summarize public Polymarket data for machine-readable context.</p>
         </article>
         <article className="panel">
           <Activity size={22} />
-          <h3>No Empty-Pack Sales</h3>
-          <p>If a requested city or zip has no matching active records, the API returns no-inventory instead of charging for an empty pack.</p>
+          <h3>No custody or execution</h3>
+          <p>x402nano does not hold user funds, place trades, or manage accounts.</p>
         </article>
         <article className="panel">
           <FileText size={22} />
-          <h3>API Under The Hood</h3>
-          <p>x402 stays as the proof and machine-payment layer. Human buyers can still buy simple local packs without needing to understand the protocol.</p>
+          <h3>No trading advice</h3>
+          <p>Outputs are informational only: no betting advice, no buy/sell recommendations, no guaranteed outcomes.</p>
         </article>
       </section>
 
       <section className="launchPanel">
         <div>
-          <span className="eyebrow">sales message</span>
-          <h2>Copy this when pitching real estate buyers.</h2>
+          <span className="eyebrow">builder copy</span>
+          <h2>Describe x402nano in one paragraph.</h2>
         </div>
-        <pre>{`I built a local real estate lead intelligence service.
+        <pre>{`x402nano is a machine-payable Polymarket intelligence API for autonomous agents.
 
-No subscription. You pick a city, zip, county, or niche and I build a public-source lead pack with:
+Free: GET /api/markets/trending
+Paid: GET /api/markets/brief?slug=...
 
-- why each lead may be worth contacting
-- source evidence
-- suggested opener
-- confidence score
-- next step
+Flow: HTTP 402 -> X-PAYMENT -> 0.05 USDC on Base -> read-only JSON + receipt.
 
-I’m testing ${targetMarket} now. Want to see a sample pack?`}</pre>
-        <CopyButton value={`I built a local real estate lead intelligence service.\n\nNo subscription. You pick a city, zip, county, or niche and I build a public-source lead pack with:\n\n- why each lead may be worth contacting\n- source evidence\n- suggested opener\n- confidence score\n- next step\n\nI’m testing ${targetMarket} now. Want to see a sample pack?`}>
-          Copy sales message
+No account. No API key. No custody. No trading advice.`}</pre>
+        <CopyButton value={`x402nano is a machine-payable Polymarket intelligence API for autonomous agents.\n\nFree: GET /api/markets/trending\nPaid: GET /api/markets/brief?slug=...\n\nFlow: HTTP 402 -> X-PAYMENT -> 0.05 USDC on Base -> read-only JSON + receipt.\n\nNo account. No API key. No custody. No trading advice.`}>
+          Copy description
         </CopyButton>
       </section>
 
       <footer>
-        <a href="https://www.leadnestai.com" rel="noreferrer" target="_blank">
-          LeadNestAI <ExternalLink size={14} />
+        <a href={schemaEndpoint} rel="noreferrer" target="_blank">
+          Schema <ExternalLink size={14} />
         </a>
-        <span>Machine-payable lead intelligence on Base mainnet.</span>
+        <span>Machine-payable market intelligence on Base mainnet.</span>
       </footer>
     </main>
   );
