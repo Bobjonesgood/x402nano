@@ -51,10 +51,16 @@ market brief JSON unlocked
 on-chain USDC transfer confirmed
 ```
 
-Proof artifact:
+Proof references:
 
 ```txt
-x402nano-mainnet-proof-2026-06-05.md
+BaseScan transaction:
+https://basescan.org/tx/0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1
+
+In-repo proof notes:
+TRUST.md
+ARCHITECTURE.md
+LISTING_METADATA.md
 ```
 
 Note: the local buyer script exited nonzero after the real unlock because the immediate post-payment buyer balance read was stale. Seller balance updated, receipt/events were recorded, and a later no-payment balance check confirmed the buyer moved from `1.00` to `0.95` USDC.
@@ -213,13 +219,12 @@ new product features before feedback
 ```powershell
 npm.cmd install
 npm.cmd run build
-npm.cmd run settlement:check
 ```
 
 Core scripts:
 
 ```txt
 npm.cmd run agent:mainnet
-npm.cmd run smoke
+npm.cmd run wallet:mainnet:create
 npm.cmd run build
 ```
