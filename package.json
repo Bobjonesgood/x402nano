@@ -1,5 +1,5 @@
 {
-  "name": "payment-aware-sandbox",
+  "name": "x402nano",
   "version": "0.2.0",
   "private": true,
   "type": "module",
@@ -11,12 +11,8 @@
     "preview": "vite preview --host 127.0.0.1",
     "start": "node server/index.js",
     "render:start": "node server/index.js",
-    "agent:buyer": "node scripts/agent-buyer.js",
-    "smoke": "node scripts/smoke-test.js",
-    "agent:real": "node scripts/real-x402-buyer.js",
     "agent:mainnet": "node scripts/mainnet-x402-buyer.js",
-    "wallet:mainnet:create": "node scripts/create-mainnet-buyer-wallet.js",
-    "settlement:check": "node scripts/settlement-readiness.js"
+    "wallet:mainnet:create": "node scripts/create-mainnet-buyer-wallet.js"
   },
   "dependencies": {
     "@coinbase/cdp-sdk": "^1.50.0",

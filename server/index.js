@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
@@ -24,10 +23,8 @@ const API_NAME = "x402nano Market Intelligence API";
 const RELEASE_VERSION = process.env.RELEASE_VERSION ?? "0.2.0";
 const RELEASE_NAME = process.env.RELEASE_NAME ?? "x402nano Machine-Payable Market Intelligence Proof";
 const PAYMENT_HEADER = "X-PAYMENT";
-const RESOURCE_PATH = "/api/lead-intelligence/premium-pack";
-const LEGACY_RESOURCE_PATH = "/api/premium-leads";
 const MARKET_BRIEF_PATH = "/api/markets/brief";
-const ADMIN_LEAD_PACK_PATH = "/api/admin/lead-pack";
+const RESOURCE_PATH = MARKET_BRIEF_PATH;
 const ADMIN_TOKEN = process.env.LEAD_PACK_ADMIN_TOKEN?.trim() ?? "";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LEAD_PACK_MODE = process.env.LEAD_PACK_MODE ?? "demo";
@@ -35,14 +32,11 @@ const LEAD_PACK_FILE = process.env.LEAD_PACK_FILE
   ? path.resolve(process.env.LEAD_PACK_FILE)
   : path.resolve(__dirname, "../data/production-lead-pack.runtime.json");
 const LEAD_PACK_FILE_REFRESH_MS = Number(process.env.LEAD_PACK_FILE_REFRESH_MS ?? 30000);
-const LEAD_ENGINE_EMBEDDED = process.env.LEAD_ENGINE_EMBEDDED !== "false";
-const LEAD_ENGINE_INTERVAL_MS = Number(process.env.LEAD_ENGINE_INTERVAL_MS ?? 6 * 60 * 60 * 1000);
 const MARKET_BRIEF_ENABLED = process.env.MARKET_BRIEF_ENABLED !== "false";
 const PAYMENT_TTL_MS = 5 * 60 * 1000;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 90;
 const DIST_DIR = path.resolve(__dirname, "../dist");
-const LEAD_ENGINE_SCRIPT = path.resolve(__dirname, "../scripts/autonomous-lead-engine.js");
 const EVM_ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
 
 const demoLeadPack = [
@@ -131,7 +125,7 @@ function parseProductionLeadPack(value) {
     );
 
     if (invalidRecord) {
-      return { records: [], error: "PREMIUM_LEAD_PACK_JSON is missing required lead intelligence fields or production source evidence." };
+      return { records: [], error: "Legacy JSON is missing required fields or production source evidence." };
     }
 
     return { records, error: "" };
@@ -207,8 +201,8 @@ function leadPackStatus() {
     productionConfigured,
     mainnetReady,
     disclosure: productionConfigured
-      ? "Production lead intelligence records are configured for the paid resource."
-      : "Built-in records are demo lead intelligence. Configure a production lead pack before Base mainnet paid access.",
+      ? "Legacy production records are configured for the retired resource."
+      : "Legacy records are retired. Use the Polymarket market brief endpoint.",
     reason: productionConfigured ? null : productionLeadPack.error || "Set LEAD_PACK_MODE=production and PREMIUM_LEAD_PACK_JSON for the first real paid pack."
   };
 }
@@ -257,11 +251,11 @@ const rateLimits = new Map();
 const eventLog = [];
 
 function isProtectedResource(pathname) {
-  return pathname === RESOURCE_PATH || pathname === LEGACY_RESOURCE_PATH || pathname === MARKET_BRIEF_PATH;
+  return pathname === MARKET_BRIEF_PATH;
 }
 
 function isLeadPackResource(pathname) {
-  return pathname === RESOURCE_PATH || pathname === LEGACY_RESOURCE_PATH;
+  return false;
 }
 
 function isMarketBriefResource(pathname) {
@@ -277,7 +271,7 @@ function isPaymentResource(resource = "") {
     const parsed = new URL(resource, "https://x402nano.local");
     return isProtectedResource(parsed.pathname);
   } catch {
-    return resource === RESOURCE_PATH || resource === LEGACY_RESOURCE_PATH;
+    return resource === MARKET_BRIEF_PATH;
   }
 }
 
@@ -338,57 +332,6 @@ function logEvent(type, details = {}) {
   eventLog.unshift(event);
   eventLog.splice(100);
   return event;
-}
-
-let leadEngineRunning = false;
-
-function embeddedLeadEngineEnv() {
-  const env = { ...process.env };
-  const maxPages = Number(env.LEAD_ENGINE_MAX_PAGES ?? 0);
-
-  env.LEAD_ENGINE_MAX_PAGES = env.LEAD_ENGINE_EMBEDDED_MAX_PAGES
-    ?? (Number.isFinite(maxPages) && maxPages > 0 ? String(Math.min(maxPages, 8)) : "8");
-  env.LEAD_ENGINE_TIMEOUT_MS = env.LEAD_ENGINE_EMBEDDED_TIMEOUT_MS ?? env.LEAD_ENGINE_TIMEOUT_MS ?? "8000";
-  env.LEAD_ENGINE_RUN_TIMEOUT_MS = env.LEAD_ENGINE_EMBEDDED_RUN_TIMEOUT_MS ?? env.LEAD_ENGINE_RUN_TIMEOUT_MS ?? "120000";
-  env.AI_INFERENCE_TIMEOUT_MS = env.AI_INFERENCE_TIMEOUT_MS ?? "30000";
-
-  return env;
-}
-
-function runEmbeddedLeadEngine(trigger = "startup") {
-  if (!LEAD_ENGINE_EMBEDDED || leadEngineRunning) return;
-
-  leadEngineRunning = true;
-  const child = spawn(process.execPath, [LEAD_ENGINE_SCRIPT], {
-    cwd: path.resolve(__dirname, ".."),
-    env: embeddedLeadEngineEnv(),
-    stdio: ["ignore", "pipe", "pipe"]
-  });
-
-  logEvent("lead_engine_started", { trigger });
-  child.stdout.on("data", data => {
-    for (const line of String(data).split(/\r?\n/).filter(Boolean)) {
-      console.log(`[leadengine] ${line}`);
-    }
-  });
-  child.stderr.on("data", data => {
-    for (const line of String(data).split(/\r?\n/).filter(Boolean)) {
-      console.error(`[leadengine] ${line}`);
-    }
-  });
-  child.on("exit", code => {
-    leadEngineRunning = false;
-    logEvent(code === 0 ? "lead_engine_finished" : "lead_engine_failed", {
-      trigger,
-      code
-    });
-    refreshProductionLeadPack({ force: true }).catch(error => {
-      logEvent("lead_pack_refresh_failed", {
-        source: LEAD_PACK_FILE,
-        reason: error.message
-      });
-    });
-  });
 }
 
 function canonicalPayment(requirements, payer = BUYER_ADDRESS) {
@@ -1320,19 +1263,6 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (req.method === "GET" && url.pathname === ADMIN_LEAD_PACK_PATH) {
-    if (!adminAuthorized(req)) {
-      return json(res, ADMIN_TOKEN ? 401 : 404, {
-        error: ADMIN_TOKEN ? "Unauthorized" : "Admin lead pack preview is disabled.",
-        reason: ADMIN_TOKEN
-          ? "Send Authorization: Bearer <LEAD_PACK_ADMIN_TOKEN> to preview the active lead pack."
-          : "Set LEAD_PACK_ADMIN_TOKEN to enable private owner preview without weakening the x402 paywall."
-      });
-    }
-
-    return json(res, 200, leadPackAdminSummary(locationFilterFromUrl(url)));
-  }
-
   if (req.method === "GET" && url.pathname.startsWith("/api/receipts/")) {
     const receiptId = url.pathname.split("/").pop();
     const receipt = payments.get(receiptId);
@@ -1483,6 +1413,14 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "GET") {
+    if (url.pathname.startsWith("/api/")) {
+      return json(res, 404, {
+        error: "API route not found",
+        service: API_NAME,
+        available: ["/api/markets/trending", "/api/markets/brief?slug=..."]
+      });
+    }
+
     return serveStatic(req, res);
   }
 
@@ -1500,8 +1438,4 @@ server.listen(PORT, HOST, () => {
   }
 
   console.log(`x402 seller server listening on http://${HOST}:${PORT}`);
-  runEmbeddedLeadEngine("startup");
-  if (LEAD_ENGINE_EMBEDDED) {
-    setInterval(() => runEmbeddedLeadEngine("interval"), LEAD_ENGINE_INTERVAL_MS);
-  }
 });
