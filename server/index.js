@@ -1062,10 +1062,31 @@ function readBody(req) {
 
 function apiDiscovery(req) {
   const origin = publicOrigin(req);
+  const exampleSlug = "will-gideon-saar-be-the-next-prime-minister-of-israel";
+  const paidPath = `${MARKET_BRIEF_PATH}?slug=${exampleSlug}`;
+  const paidUrl = `${origin}${paidPath}`;
+  const trendingUrl = `${origin}/api/markets/trending`;
+
   return {
     name: API_NAME,
     description: "Machine-payable read-only Polymarket market intelligence for AI agents and bots.",
-    version: "1.0.0",
+    version: "1.1.0",
+    what: "x402nano is a machine-payable Polymarket market intelligence API. Agents can discover markets for free, request a paid brief, receive an HTTP 402 challenge, retry with X-PAYMENT, and get unlocked JSON plus a receipt.",
+    whoFor: [
+      "AI agent builders",
+      "market-monitoring bots",
+      "x402 and Base builders",
+      "API developers testing machine-payable data",
+      "Polymarket research and automation workflows"
+    ],
+    boundaries: [
+      "Read-only public market intelligence.",
+      "No trading execution.",
+      "No custody.",
+      "No betting advice.",
+      "No buy/sell recommendation.",
+      "No user account or API key required."
+    ],
     x402: {
       version: PAYMENT_MODE === "facilitator" ? "1" : "sandbox-1",
       settlement: paymentProvider.settlement,
@@ -1078,15 +1099,28 @@ function apiDiscovery(req) {
       supportedAssets: [ASSET],
       sellerWallet: sellerWalletStatus()
     },
-    product: marketProductStatus(),
+    product: {
+      ...marketProductStatus(),
+      paymentUnlocks: [
+        "receipt metadata",
+        "market snapshot",
+        "current outcome pricing",
+        "top outcome details",
+        "24h probability movement when public CLOB history is available",
+        "volume and liquidity context",
+        "resolution date/source context",
+        "market movement, attention, and data completeness scores",
+        "data quality notes and safety boundaries"
+      ]
+    },
     links: {
       self: `${origin}/.well-known/x402.json`,
       health: `${origin}/api/health`,
       version: `${origin}/api/version`,
       pricing: `${origin}/api/pricing`,
       schema: `${origin}/api/schema`,
-      trendingMarkets: `${origin}/api/markets/trending`,
-      paidResource: `${origin}${MARKET_BRIEF_PATH}?slug=will-gideon-saar-be-the-next-prime-minister-of-israel`,
+      trendingMarkets: trendingUrl,
+      paidResource: paidUrl,
       sandboxSigner: paymentProvider.isClientSigningAvailable ? `${origin}/api/payments/sign` : null,
       receiptTemplate: `${origin}/api/receipts/{receiptId}`
     },
@@ -1096,6 +1130,7 @@ function apiDiscovery(req) {
         path: `${MARKET_BRIEF_PATH}?slug={polymarket-slug}`,
         description: "Returns a read-only Polymarket market intelligence brief after a valid x402 payment header is verified.",
         price: `${PRICE_USDC} ${ASSET}`,
+        unlocks: "Unlocked JSON market brief plus receipt.",
         payment: {
           header: PAYMENT_HEADER,
           challengeStatus: 402,
@@ -1111,7 +1146,97 @@ function apiDiscovery(req) {
         description: "Returns free Polymarket market candidates for agents to inspect before paying for a brief.",
         price: "free"
       }
-    ]
+    ],
+    examples: {
+      freeTrendingRequest: {
+        curl: `curl "${trendingUrl}"`
+      },
+      paidBriefRequest: {
+        curl: `curl -i "${paidUrl}"`,
+        expectedStatusWithoutPayment: 402,
+        expectedChallengeFields: ["paymentRequirements", "x402"],
+        retryHeader: `${PAYMENT_HEADER}: <signed-x402-payment>`
+      },
+      paidBriefRetry: {
+        curl: `curl "${paidUrl}" -H "${PAYMENT_HEADER}: <signed-x402-payment>"`,
+        expectedStatusWithValidPayment: 200
+      },
+      example402Response: {
+        error: "Payment required",
+        paymentRequirements: {
+          x402Version: PAYMENT_MODE === "facilitator" ? "1" : "sandbox-1",
+          scheme: "exact",
+          network: NETWORK,
+          asset: ASSET,
+          amount: PRICE_USDC,
+          payTo: SELLER_ADDRESS,
+          resource: paidPath,
+          description: "x402nano read-only Polymarket market intelligence brief. Informational only; no trading, betting, or financial advice.",
+          mimeType: "application/json"
+        }
+      },
+      exampleUnlockedResponse: {
+        status: "unlocked",
+        receipt: {
+          id: "receipt-id-after-payment",
+          payer: "external-x402-client",
+          seller: SELLER_ADDRESS,
+          amount: PRICE_USDC,
+          asset: ASSET,
+          network: NETWORK,
+          settledAt: "2026-06-11T00:00:00.000Z"
+        },
+        data: {
+          briefType: "read-only-market-intelligence",
+          market: {
+            slug: exampleSlug,
+            status: "active"
+          },
+          snapshot: {
+            generatedAt: "2026-06-11T00:00:00.000Z",
+            source: "polymarket:gamma",
+            leadingOutcome: "Yes",
+            leadingOutcomeImpliedProbability: "50.0%"
+          },
+          movement: {
+            window: "24h",
+            source: "polymarket:clob",
+            available: true,
+            direction: "up",
+            absoluteChange: "0.025",
+            trajectory: [
+              {
+                timestamp: "2026-06-10T00:00:00.000Z",
+                probability: "0.475"
+              },
+              {
+                timestamp: "2026-06-11T00:00:00.000Z",
+                probability: "0.500"
+              }
+            ]
+          },
+          metrics: {
+            volume24h: "17,260.91",
+            liquidity: "81,697.04"
+          },
+          resolution: {
+            endDate: "2026-12-31T00:00:00Z",
+            source: "Use the Polymarket market page and rules for resolution criteria."
+          },
+          scores: {
+            marketMovementScore: 45,
+            attentionScore: 70,
+            dataCompletenessScore: 100,
+            unusualMovementFlag: false
+          }
+        }
+      }
+    },
+    schema: {
+      contentType: "application/json",
+      fullSchemaUrl: `${origin}/api/schema`,
+      response: marketBriefSchema
+    }
   };
 }
 
