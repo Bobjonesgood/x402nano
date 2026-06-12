@@ -855,7 +855,7 @@ function paymentRequirements(resource = RESOURCE_PATH, filter = { active: false 
   return requirements;
 }
 
-function officialPaymentRequirements(requirements) {
+function officialPaymentRequirements(requirements, resource = requirements.resource) {
   const exactAsset = facilitatorAssetRequirements(requirements);
 
   return {
@@ -869,7 +869,7 @@ function officialPaymentRequirements(requirements) {
       ...exactAsset.extra,
       nonce: requirements.nonce,
       expiresAt: requirements.expiresAt,
-      resource: requirements.resource
+      resource
     }
   };
 }
@@ -899,6 +899,7 @@ function facilitatorAssetRequirements(requirements) {
 
 function officialPaymentRequired(req, requirements, error = "Payment required") {
   const origin = publicOrigin(req);
+  const resourceUrl = `${origin}${requirements.resource}`;
   const isMarketBrief = requirements.resource.startsWith(MARKET_BRIEF_PATH);
   const environmentTag = paymentProvider.mode === "facilitator" && requirements.network === "eip155:8453"
     ? "mainnet"
@@ -910,7 +911,7 @@ function officialPaymentRequired(req, requirements, error = "Payment required") 
     x402Version: 2,
     error,
     resource: {
-      url: `${origin}${requirements.resource}`,
+      url: resourceUrl,
       description: isMarketBrief
         ? "Machine-payable read-only Polymarket market intelligence brief. Informational only; no trading, betting, or financial advice."
         : "Legacy paid resource retired. Use the x402nano Polymarket market brief endpoint.",
@@ -920,9 +921,19 @@ function officialPaymentRequired(req, requirements, error = "Payment required") 
         ? ["polymarket", "market-intelligence", "x402", "base", "read-only", environmentTag]
         : ["leads", "agents", "x402", "lead-intelligence", "service-business", environmentTag]
     },
-    accepts: [officialPaymentRequirements(requirements)],
+    accepts: [officialPaymentRequirements(requirements, resourceUrl)],
     extensions: isMarketBrief ? bazaarMarketBriefDiscovery : bazaarLeadPackDiscovery
   };
+}
+
+function normalizeResourceIdentifier(resource) {
+  if (!resource) return resource;
+  try {
+    const parsed = new URL(resource, "https://x402nano.local");
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return resource;
+  }
 }
 
 function parsePaymentHeader(header) {
@@ -953,7 +964,7 @@ function normalizeRequirements(requirements, payment = {}) {
     asset: isFacilitatorUsdcRequirement ? ASSET : requirements.asset,
     amount: isFacilitatorUsdcRequirement ? PRICE_USDC : requirements.amount,
     payTo: requirements.payTo,
-    resource: requirements.resource ?? requirements.extra?.resource ?? RESOURCE_PATH,
+    resource: normalizeResourceIdentifier(requirements.resource ?? requirements.extra?.resource ?? RESOURCE_PATH),
     description: requirements.description ?? "x402nano protected market brief",
     mimeType: requirements.mimeType ?? "application/json",
     maxTimeoutSeconds: requirements.maxTimeoutSeconds ?? Math.floor(PAYMENT_TTL_MS / 1000),
@@ -1082,6 +1093,7 @@ function apiDiscovery(req) {
     name: API_NAME,
     description: "Machine-payable read-only Polymarket market intelligence for AI agents and bots.",
     version: "1.1.0",
+    generatedAt: new Date().toISOString(),
     what: "x402nano is a machine-payable Polymarket market intelligence API. Agents can discover markets for free, request a paid brief, receive an HTTP 402 challenge, retry with X-PAYMENT, and get unlocked JSON plus a receipt.",
     whoFor: [
       "AI agent builders",
@@ -1184,6 +1196,29 @@ function apiDiscovery(req) {
           resource: paidPath,
           description: "x402nano read-only Polymarket market intelligence brief. Informational only; no trading, betting, or financial advice.",
           mimeType: "application/json"
+        },
+        x402: {
+          x402Version: 2,
+          resource: {
+            url: paidUrl,
+            description: "Machine-payable read-only Polymarket market intelligence brief. Informational only; no trading, betting, or financial advice.",
+            mimeType: "application/json",
+            serviceName: API_NAME,
+            tags: ["polymarket", "market-intelligence", "x402", "base", "read-only", "mainnet"]
+          },
+          accepts: [
+            officialPaymentRequirements({
+              scheme: "exact",
+              network: NETWORK,
+              asset: ASSET,
+              amount: PRICE_USDC,
+              payTo: SELLER_ADDRESS,
+              maxTimeoutSeconds: Math.floor(PAYMENT_TTL_MS / 1000),
+              resource: paidPath,
+              nonce: "example-nonce",
+              expiresAt: "2026-06-11T00:05:00.000Z"
+            }, paidUrl)
+          ]
         }
       },
       exampleUnlockedResponse: {
