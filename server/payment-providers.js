@@ -80,6 +80,15 @@ export function createFacilitatorProvider({ facilitatorUrl, facilitatorApiKey, c
   const baseUrl = facilitatorUrl?.replace(/\/$/, "");
   const cdpAuthConfigured = Boolean(cdpApiKeyId && cdpApiKeySecret);
 
+  function parseExtensionResponses(header) {
+    if (!header) return null;
+    try {
+      return JSON.parse(header);
+    } catch {
+      return header;
+    }
+  }
+
   async function authHeaders(path) {
     if (!baseUrl) return {};
 
@@ -116,16 +125,18 @@ export function createFacilitatorProvider({ facilitatorUrl, facilitatorApiKey, c
       body: JSON.stringify(body)
     });
     const data = await response.json().catch(() => ({}));
+    const extensionResponses = parseExtensionResponses(response.headers.get("EXTENSION-RESPONSES"));
 
     if (!response.ok) {
       return {
         ok: false,
         reason: data.error ?? data.reason ?? `Facilitator ${path} returned ${response.status}.`,
-        data
+        data,
+        extensionResponses
       };
     }
 
-    return { ok: true, data };
+    return { ok: true, data, extensionResponses };
   }
 
   function accepted(data) {
@@ -188,6 +199,10 @@ export function createFacilitatorProvider({ facilitatorUrl, facilitatorApiKey, c
           facilitator: baseUrl,
           verification: verification.data,
           settlement: settlement.data,
+          extensionResponses: {
+            verify: verification.extensionResponses,
+            settle: settlement.extensionResponses
+          },
           transaction:
             settlement.data.transactionHash ??
             settlement.data.txHash ??

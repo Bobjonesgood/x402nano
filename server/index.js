@@ -635,8 +635,17 @@ const bazaarMarketBriefOutputExample = {
 
 const bazaarMarketBriefDiscovery = declareDiscoveryExtension({
   method: "GET",
+  input: {
+    slug: "will-gideon-saar-be-the-next-prime-minister-of-israel"
+  },
   inputSchema: {
-    properties: {},
+    properties: {
+      slug: {
+        type: "string",
+        description: "Polymarket market slug to summarize."
+      }
+    },
+    required: ["slug"],
     additionalProperties: false
   },
   output: {
@@ -1022,9 +1031,10 @@ async function verifyPayment(payment) {
     network: requirements.network,
     resource: requirements.resource,
     mode: settlement.settlement.mode,
-      transaction: settlement.settlement.transaction,
-      provider: paymentProvider.mode,
-      settledAt: new Date().toISOString()
+    transaction: settlement.settlement.transaction,
+    provider: paymentProvider.mode,
+    facilitatorExtensionResponses: settlement.settlement.extensionResponses,
+    settledAt: new Date().toISOString()
   });
   usedNonces.add(requirements.nonce);
   issuedRequirements.delete(requirements.nonce);
@@ -1032,7 +1042,8 @@ async function verifyPayment(payment) {
     receiptId: paymentId,
     payer,
     resource: requirements.resource,
-    settlement: settlement.settlement.mode
+    settlement: settlement.settlement.mode,
+    facilitatorExtensionResponses: settlement.settlement.extensionResponses
   });
   logEvent("receipt_generated", {
     receiptId: paymentId,
