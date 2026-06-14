@@ -24,6 +24,7 @@ const RELEASE_VERSION = process.env.RELEASE_VERSION ?? "0.2.0";
 const RELEASE_NAME = process.env.RELEASE_NAME ?? "x402nano Machine-Payable Market Intelligence Proof";
 const PAYMENT_HEADER = "X-PAYMENT";
 const MARKET_BRIEF_PATH = "/api/markets/brief";
+const ORBIS_MARKET_BRIEF_PATH = "/api/orbis/markets/brief-9f3d2b7a6c4e4892b1a0d5f8e7c6a3b9f4e1a8c2d6";
 const RESOURCE_PATH = MARKET_BRIEF_PATH;
 const ADMIN_TOKEN = process.env.LEAD_PACK_ADMIN_TOKEN?.trim() ?? "";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,6 +37,7 @@ const MARKET_BRIEF_ENABLED = process.env.MARKET_BRIEF_ENABLED !== "false";
 const PAYMENT_TTL_MS = 5 * 60 * 1000;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 90;
+const ORBIS_RATE_LIMIT_MAX_REQUESTS = 20;
 const DIST_DIR = path.resolve(__dirname, "../dist");
 const EVM_ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
 
@@ -810,6 +812,27 @@ function rateLimit(req) {
   return { ok: true };
 }
 
+function scopedRateLimit(req, scope, maxRequests) {
+  const id = `${scope}:${clientId(req)}`;
+  const now = Date.now();
+  const current = rateLimits.get(id);
+
+  if (!current || current.resetAt <= now) {
+    rateLimits.set(id, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { ok: true };
+  }
+
+  current.count += 1;
+  if (current.count > maxRequests) {
+    return {
+      ok: false,
+      retryAfter: Math.ceil((current.resetAt - now) / 1000)
+    };
+  }
+
+  return { ok: true };
+}
+
 function pruneExpiredRequirements() {
   const now = Date.now();
   for (const [nonce, requirement] of issuedRequirements) {
@@ -1430,6 +1453,44 @@ const server = http.createServer(async (req, res) => {
         status: "error",
         source: "polymarket:gamma",
         reason: error.message
+      });
+    }
+  }
+
+  if (req.method === "GET" && url.pathname === ORBIS_MARKET_BRIEF_PATH) {
+    const orbisLimit = scopedRateLimit(req, "orbis-market-brief", ORBIS_RATE_LIMIT_MAX_REQUESTS);
+    if (!orbisLimit.ok) {
+      return json(res, 429, { error: "Too many requests", retryAfterSeconds: orbisLimit.retryAfter }, { "Retry-After": String(orbisLimit.retryAfter) });
+    }
+
+    if (!MARKET_BRIEF_ENABLED) return json(res, 404, { error: "Market brief API is disabled." });
+
+    const slug = url.searchParams.get("slug");
+    if (!slug) {
+      return json(res, 400, {
+        error: "Market slug required",
+        reason: "Call the Orbis market brief endpoint with ?slug=<polymarket-slug>."
+      });
+    }
+
+    try {
+      const market = await fetchMarketBySlug(slug);
+      const priceHistory24h = await fetchMarketPriceHistory(market, { interval: "1d", fidelity: 60 });
+      const brief = buildMarketBrief(market, { priceHistory24h });
+
+      return json(res, 200, {
+        status: "ok",
+        access: {
+          via: "orbis-proxy",
+          paymentHandledBy: "orbis"
+        },
+        data: brief
+      });
+    } catch (error) {
+      return json(res, 502, {
+        error: "Market brief unavailable",
+        reason: error.message,
+        source: "polymarket:gamma"
       });
     }
   }
