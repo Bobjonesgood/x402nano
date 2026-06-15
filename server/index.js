@@ -228,6 +228,34 @@ function marketProductStatus() {
   };
 }
 
+function freshnessMetadata(resourceType = "market-intelligence") {
+  const base = {
+    generatedOnRequest: true,
+    expectedMaxAgeSeconds: 90,
+    dataSources: ["polymarket:gamma", "polymarket:clob"],
+    doesNotRevealPaidContent: true,
+    note: "Freshness metadata is public so agents can decide whether to pay without seeing the unlocked brief or delta."
+  };
+
+  if (resourceType === "market-delta") {
+    return {
+      ...base,
+      resourceType,
+      historyWindow: "24h",
+      callerSuppliesSince: true,
+      paidContentHidden: ["probability delta", "significance scores", "watch points", "trajectory"]
+    };
+  }
+
+  return {
+    ...base,
+    resourceType,
+    historyWindow: "24h",
+    callerSuppliesSince: false,
+    paidContentHidden: ["market snapshot", "movement summary", "significance scores", "watch points"]
+  };
+}
+
 function mainnetProductBlocker() {
   const product = leadPackStatus();
   if (paymentProvider.mode === "facilitator" && NETWORK === "eip155:8453" && !product.mainnetReady) {
@@ -1127,7 +1155,8 @@ function officialPaymentRequired(req, requirements, error = "Payment required") 
       serviceName: API_NAME,
       tags: isMarketIntel
         ? ["polymarket", "market-intelligence", "x402", "base", "read-only", environmentTag]
-        : ["leads", "agents", "x402", "lead-intelligence", "service-business", environmentTag]
+        : ["leads", "agents", "x402", "lead-intelligence", "service-business", environmentTag],
+      ...(isMarketIntel ? { freshness: freshnessMetadata(isMarketDelta ? "market-delta" : "market-brief") } : {})
     },
     accepts: [officialPaymentRequirements(requirements, resourceUrl)],
     extensions: isMarketDelta ? bazaarMarketDeltaDiscovery : isMarketBrief ? bazaarMarketBriefDiscovery : bazaarLeadPackDiscovery
@@ -1335,6 +1364,10 @@ function apiDiscovery(req) {
     },
     product: {
       ...marketProductStatus(),
+      freshness: {
+        marketBrief: freshnessMetadata("market-brief"),
+        marketDelta: freshnessMetadata("market-delta")
+      },
       paymentUnlocks: [
         "receipt metadata",
         "market snapshot",
@@ -1374,6 +1407,7 @@ function apiDiscovery(req) {
           retryBehavior: "Repeat the same request with X-PAYMENT set to the encoded payment payload."
         },
         responseSchema: "/api/schema",
+        freshness: freshnessMetadata("market-brief"),
         flow: ["discover", "request market brief", "receive 402 requirements", "sign payment", "retry with X-PAYMENT", "receive receipt and market brief JSON"]
       },
       {
@@ -1389,6 +1423,7 @@ function apiDiscovery(req) {
           retryBehavior: "Repeat the same request with X-PAYMENT set to the encoded payment payload."
         },
         responseSchema: "/api/schema",
+        freshness: freshnessMetadata("market-delta"),
         flow: ["discover", "request market delta", "receive 402 requirements", "sign payment", "retry with X-PAYMENT", "receive receipt and market delta JSON"]
       },
       {
@@ -1636,6 +1671,10 @@ const server = http.createServer(async (req, res) => {
       quoteTtlSeconds: Math.floor(PAYMENT_TTL_MS / 1000),
       paymentMode: paymentProvider.mode,
       sellerWallet: sellerWalletStatus(),
+      freshness: {
+        marketBrief: freshnessMetadata("market-brief"),
+        marketDelta: freshnessMetadata("market-delta")
+      },
       product: marketProductStatus(),
       provider: paymentProvider.describe()
     });
