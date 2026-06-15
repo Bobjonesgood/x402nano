@@ -49,6 +49,7 @@ machine-payable market intelligence
 read-only Polymarket public-data summaries
 JSON for agents and bots
 x402 payment proof infrastructure
+market delta briefs for agent polling loops
 ```
 
 x402nano is not:
@@ -117,7 +118,8 @@ Current scope:
 ```txt
 GET /api/markets/trending
 GET /api/markets/brief?slug=...
-0.05 USDC per paid brief
+GET /api/markets/delta?slug=...&since=...
+0.05 USDC per paid intelligence object
 Base mainnet
 HTTP 402
 X-PAYMENT

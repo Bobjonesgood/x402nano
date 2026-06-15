@@ -26,6 +26,12 @@ Paid market brief endpoint:
 GET https://x402nano.onrender.com/api/markets/brief?slug=will-gideon-saar-be-the-next-prime-minister-of-israel
 ```
 
+Paid market delta endpoint:
+
+```http
+GET https://x402nano.onrender.com/api/markets/delta?slug=will-gideon-saar-be-the-next-prime-minister-of-israel&since=2026-06-15T12:00:00Z
+```
+
 ## Mainnet Proof
 
 x402nano has completed one real paid unlock on Base mainnet.
@@ -146,6 +152,53 @@ Successful paid responses include a receipt and the market brief payload:
 }
 ```
 
+## Delta Briefs
+
+Delta briefs are the repeat-use paid object for agent polling loops. A brief answers "what is this market right now?" A delta answers "what changed since the agent last checked?"
+
+```http
+GET https://x402nano.onrender.com/api/markets/delta?slug=will-gideon-saar-be-the-next-prime-minister-of-israel&since=2026-06-15T12:00:00Z
+```
+
+Without payment, the route returns `402 Payment Required`. With a valid `X-PAYMENT` retry, the response includes a receipt and read-only delta JSON:
+
+```json
+{
+  "status": "unlocked",
+  "receipt": {
+    "id": "receipt-id-after-payment",
+    "network": "eip155:8453",
+    "amount": "0.05",
+    "asset": "USDC"
+  },
+  "data": {
+    "briefType": "read-only-market-delta",
+    "market": {
+      "slug": "will-gideon-saar-be-the-next-prime-minister-of-israel"
+    },
+    "window": {
+      "since": "2026-06-15T12:00:00.000Z",
+      "until": "2026-06-15T18:30:00.000Z"
+    },
+    "change": {
+      "available": true,
+      "outcome": "Yes",
+      "absoluteChange": "0.050",
+      "relativeChange": "+11.9%",
+      "direction": "up",
+      "changed": true
+    },
+    "significance": {
+      "repeatCheckPriority": "high",
+      "unusualMovementFlag": true,
+      "summary": "The leading outcome moved up by 0.050 over the requested window."
+    }
+  }
+}
+```
+
+Delta briefs are descriptive market context for agents. They do not include trading execution, custody, betting advice, predictions, or buy/sell recommendations.
+
 ## Local Proof Command
 
 Preflight only:
@@ -198,6 +251,7 @@ Polymarket public data
 read-only market intelligence
 free trending endpoint
 paid market brief endpoint
+paid market delta endpoint
 HTTP 402 challenge
 Base mainnet USDC unlock
 receipt and proof

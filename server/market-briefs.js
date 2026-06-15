@@ -104,6 +104,43 @@ function dataCompletenessScore({ market, history }) {
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
 
+function parseTimestamp(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+}
+
+function historyPointToDeltaPoint(point) {
+  if (!point) return null;
+  return {
+    timestamp: new Date(point.timestamp * 1000).toISOString(),
+    probability: formatDecimal(point.probability)
+  };
+}
+
+function pointDistanceMs(point, targetMs) {
+  return Math.abs((point.timestamp * 1000) - targetMs);
+}
+
+function nearestHistoryPoint(points, targetDate) {
+  if (!points.length || !targetDate) return points[0] ?? null;
+  const targetMs = targetDate.getTime();
+  return points.reduce((best, point) =>
+    !best || pointDistanceMs(point, targetMs) < pointDistanceMs(best, targetMs) ? point : best
+  , null);
+}
+
+function buildDeltaWindow(sinceDate, endPoint) {
+  return {
+    since: sinceDate ? sinceDate.toISOString() : null,
+    until: endPoint ? new Date(endPoint.timestamp * 1000).toISOString() : new Date().toISOString(),
+    requestedBy: "client-supplied timestamp",
+    note: sinceDate
+      ? "Delta uses the nearest available public CLOB history point to the requested since timestamp."
+      : "The since timestamp was invalid or missing."
+  };
+}
+
 function buildMovementBlock(market, history) {
   const points = history?.history ?? [];
   const first = points[0];
@@ -228,6 +265,109 @@ export function buildMarketBrief(market, { priceHistory24h = null } = {}) {
       movement24hAvailable: movement.available,
       resolutionDateAvailable: Boolean(market.endDate),
       note: "This brief uses public Polymarket Gamma and CLOB data when available. It does not verify external facts or execute trades."
+    },
+    boundaries: [
+      "Read-only public market data summary.",
+      "No trading execution.",
+      "No custody of user funds.",
+      "No buy/sell/bet recommendation."
+    ],
+    sourceUrls: [
+      market.url,
+      "https://gamma-api.polymarket.com"
+    ],
+    disclaimer
+  };
+}
+
+export function buildMarketDelta(market, { priceHistory = null, since = null } = {}) {
+  const disclaimer = process.env.MARKET_BRIEF_DISCLAIMER || DEFAULT_DISCLAIMER;
+  const sinceDate = parseTimestamp(since);
+  const points = priceHistory?.history ?? [];
+  const start = nearestHistoryPoint(points, sinceDate);
+  const end = points[points.length - 1] ?? null;
+  const available = Boolean(priceHistory?.available && start && end);
+  const change = available ? end.probability - start.probability : null;
+  const relativeChange = available && start?.probability ? change / Math.abs(start.probability) : null;
+  const marketMovementScore = scoreFromMovement(change, market.volume, market.liquidity, available);
+  const attentionScore = Math.max(0, Math.min(100, Math.round(
+    marketMovementScore * 0.55 +
+    Math.min(Math.log10(Math.max(Number(market.volume24h ?? market.volume) || 0, 1)) * 10, 25) +
+    Math.min(Math.log10(Math.max(Number(market.liquidity) || 0, 1)) * 8, 20)
+  )));
+  const absoluteChange = Number.isFinite(Number(change)) ? Number(change) : null;
+  const direction = movementDirection(change);
+  const title = normalizeText(market.title || market.question);
+  const question = normalizeText(market.question);
+
+  return {
+    status: "ok",
+    product: "x402nano Polymarket market delta brief",
+    briefType: "read-only-market-delta",
+    market: {
+      id: market.id,
+      slug: market.slug,
+      title,
+      question,
+      category: normalizeText(market.category),
+      status: market.closed ? "closed" : market.active ? "active" : "unknown",
+      endDate: market.endDate,
+      url: market.url
+    },
+    window: buildDeltaWindow(sinceDate, end),
+    change: {
+      source: priceHistory?.source ?? "polymarket:clob",
+      available,
+      outcome: priceHistory?.outcome ?? null,
+      clobTokenId: priceHistory?.clobTokenId ?? null,
+      start: historyPointToDeltaPoint(start),
+      end: historyPointToDeltaPoint(end),
+      startProbability: start ? Number(formatDecimal(start.probability)) : null,
+      endProbability: end ? Number(formatDecimal(end.probability)) : null,
+      absoluteChange: formatDecimal(change),
+      relativeChange: percentChange(relativeChange),
+      direction,
+      changed: available && Math.abs(absoluteChange ?? 0) >= 0.001,
+      note: available
+        ? "Change is computed from public Polymarket CLOB price history for the leading outcome token."
+        : `Delta history was unavailable: ${priceHistory?.reason ?? "no usable history returned"}.`
+    },
+    metricsDelta: {
+      volumeStart: null,
+      volumeEnd: formatNumber(market.volume),
+      volumeChange: null,
+      liquidityStart: null,
+      liquidityEnd: formatNumber(market.liquidity),
+      liquidityChange: null,
+      note: "Polymarket historical volume and liquidity deltas were not available in the v0 public data path; current values are included for context."
+    },
+    significance: {
+      marketMovementScore,
+      attentionScore,
+      dataCompletenessScore: dataCompletenessScore({ market, history: priceHistory }),
+      repeatCheckPriority: available && Math.abs(absoluteChange ?? 0) >= 0.05 ? "high" : available && Math.abs(absoluteChange ?? 0) >= 0.015 ? "medium" : "low",
+      unusualMovementFlag: available && Math.abs(absoluteChange ?? 0) >= 0.05,
+      summary: available
+        ? `The leading outcome moved ${direction} by ${formatDecimal(change)} over the requested window.`
+        : "There was not enough public history to compute a reliable delta for the requested window.",
+      note: "Scores are descriptive heuristics from public data availability, movement size, volume, and liquidity. They are not predictions or recommendations."
+    },
+    trajectory: points.map(historyPointToDeltaPoint),
+    watchPoints: [
+      "Compare probability movement with liquidity before treating the change as meaningful context.",
+      "Recheck if volume accelerates, liquidity changes, or the leading outcome changes.",
+      "Read the official market rules, end date, and resolution criteria before interpreting the data."
+    ],
+    dataQuality: {
+      priceHistoryAvailable: available,
+      volumeDataAvailable: Number.isFinite(Number(market.volume)),
+      liquidityDataAvailable: Number.isFinite(Number(market.liquidity)),
+      usedNearestHistoryPoint: available && sinceDate ? start?.timestamp * 1000 !== sinceDate.getTime() : false,
+      notes: [
+        "Delta is computed from available public market data.",
+        "If an exact historical point is unavailable, the nearest available observation may be used.",
+        "This endpoint does not store caller state; clients provide the since timestamp."
+      ]
     },
     boundaries: [
       "Read-only public market data summary.",

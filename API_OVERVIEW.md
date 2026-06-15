@@ -2,7 +2,7 @@
 
 x402nano is a machine-payable Polymarket market intelligence API for autonomous agents, bots, and API builders.
 
-It exposes a free discovery route and a paid read-only market brief route. The paid route uses the x402 flow:
+It exposes a free discovery route plus paid read-only market brief and market delta routes. Paid routes use the x402 flow:
 
 ```txt
 HTTP 402 -> X-PAYMENT -> Base USDC -> unlocked JSON brief
@@ -120,6 +120,68 @@ Successful paid responses include a receipt and unlocked JSON:
 
 The paid brief is intentionally descriptive. Movement, liquidity, resolution context, and scores are public-data context for agents. They are not predictions, betting advice, or buy/sell recommendations.
 
+## Paid Market Delta
+
+```bash
+curl -i "https://x402nano.onrender.com/api/markets/delta?slug=will-gideon-saar-be-the-next-prime-minister-of-israel&since=2026-06-15T12:00:00Z"
+```
+
+Without payment, the route returns:
+
+```txt
+402 Payment Required
+```
+
+The delta endpoint uses the same x402 payment flow and price as the market brief endpoint. With a valid x402 payment payload, the buyer retries the same request with:
+
+```bash
+curl "https://x402nano.onrender.com/api/markets/delta?slug=will-gideon-saar-be-the-next-prime-minister-of-israel&since=2026-06-15T12:00:00Z" \
+  -H "X-PAYMENT: <signed-x402-payment>"
+```
+
+Successful paid responses include a receipt and unlocked delta JSON:
+
+```json
+{
+  "status": "unlocked",
+  "receipt": {
+    "id": "receipt-id-after-payment",
+    "payer": "external-x402-client",
+    "seller": "0x4cc3831eB479aCFb6D44631d4a30814508Cf52d3",
+    "amount": "0.05",
+    "asset": "USDC",
+    "network": "eip155:8453"
+  },
+  "data": {
+    "briefType": "read-only-market-delta",
+    "status": "ok",
+    "market": {
+      "slug": "will-gideon-saar-be-the-next-prime-minister-of-israel"
+    },
+    "window": {
+      "since": "2026-06-15T12:00:00.000Z",
+      "until": "2026-06-15T18:30:00.000Z",
+      "requestedBy": "client-supplied timestamp"
+    },
+    "change": {
+      "available": true,
+      "outcome": "Yes",
+      "absoluteChange": "0.050",
+      "relativeChange": "+11.9%",
+      "direction": "up",
+      "changed": true
+    },
+    "significance": {
+      "repeatCheckPriority": "high",
+      "unusualMovementFlag": true,
+      "summary": "The leading outcome moved up by 0.050 over the requested window."
+    }
+  }
+}
+```
+
+The delta brief is designed for agent polling loops: it reports what changed since the client-supplied timestamp, using public market data when available. It is descriptive context, not a prediction, betting instruction, or buy/sell recommendation.
+
 ## Pricing
 
 ```bash
@@ -151,6 +213,8 @@ curl https://x402nano.onrender.com/api/schema
 ```
 
 Returns the JSON schema for the paid market brief response.
+
+The response also includes a `schemas.marketDelta` object for the paid market delta response.
 
 ## Receipts
 
@@ -190,6 +254,7 @@ x402nano provides:
 read-only Polymarket public-data summaries
 machine-readable JSON
 x402 payment challenge and receipt flow
+market delta briefs for agent polling loops
 ```
 
 x402nano does not provide:
