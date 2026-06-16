@@ -255,6 +255,17 @@ receipt generated
 read-only market brief JSON unlocked
 ```
 
+x402nano also completed a real direct paid delta unlock on Base mainnet.
+
+```txt
+Receipt: 75fe7c800fed47d4
+Amount: 0.05 USDC
+Network: Base mainnet, eip155:8453
+USDC transfer tx: 0x701faef1c35086f5e2ee4243a35d3a904960bd4279ffaab1890b849c1330582a
+BaseScan: https://basescan.org/tx/0x701faef1c35086f5e2ee4243a35d3a904960bd4279ffaab1890b849c1330582a
+Proof note: DIRECT_DELTA_X402_PRODUCTION_UNLOCK_PROOF.md
+```
+
 ## Public Boundaries
 
 x402nano provides:

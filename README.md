@@ -57,6 +57,15 @@ market brief JSON unlocked
 on-chain USDC transfer confirmed
 ```
 
+Delta proof:
+
+```txt
+Direct paid delta receipt: 75fe7c800fed47d4
+USDC transfer tx: 0x701faef1c35086f5e2ee4243a35d3a904960bd4279ffaab1890b849c1330582a
+BaseScan: https://basescan.org/tx/0x701faef1c35086f5e2ee4243a35d3a904960bd4279ffaab1890b849c1330582a
+Proof note: DIRECT_DELTA_X402_PRODUCTION_UNLOCK_PROOF.md
+```
+
 Proof references:
 
 ```txt
@@ -67,6 +76,7 @@ In-repo proof notes:
 TRUST.md
 ARCHITECTURE.md
 LISTING_METADATA.md
+DIRECT_DELTA_X402_PRODUCTION_UNLOCK_PROOF.md
 ```
 
 Note: the local buyer script exited nonzero after the real unlock because the immediate post-payment buyer balance read was stale. Seller balance updated, receipt/events were recorded, and a later no-payment balance check confirmed the buyer moved from `1.00` to `0.95` USDC.
