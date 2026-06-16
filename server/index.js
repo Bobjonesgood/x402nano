@@ -232,6 +232,17 @@ function freshnessMetadata(resourceType = "market-intelligence") {
   const base = {
     generatedOnRequest: true,
     expectedMaxAgeSeconds: 90,
+    estimatedLatencyMs: {
+      p50: 450,
+      p95: 1500
+    },
+    cachePolicy: {
+      policy: "no-store-paid-content",
+      maxAgeSeconds: 90,
+      staleWhileRevalidate: false
+    },
+    dataSourceCheckTiming: "after valid payment, during unlocked response generation",
+    timestampFormat: "ISO 8601 UTC with Z",
     dataSources: ["polymarket:gamma", "polymarket:clob"],
     doesNotRevealPaidContent: true,
     note: "Freshness metadata is public so agents can decide whether to pay without seeing the unlocked brief or delta."

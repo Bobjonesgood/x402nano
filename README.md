@@ -199,6 +199,15 @@ Without payment, the route returns `402 Payment Required`. With a valid `X-PAYME
 
 Delta briefs are descriptive market context for agents. They do not include trading execution, custody, betting advice, predictions, or buy/sell recommendations.
 
+Example polling clients:
+
+```txt
+examples/delta-polling.js
+examples/delta-polling.py
+```
+
+Both examples show the intended agent loop: inspect freshness metadata, request a delta, handle the `402`, retry with an x402 payment from a caller-provided signing hook, parse the receipt and delta payload, then update `since` after a successful response.
+
 ## Local Proof Command
 
 Preflight only:

@@ -182,6 +182,15 @@ Successful paid responses include a receipt and unlocked delta JSON:
 
 The delta brief is designed for agent polling loops: it reports what changed since the client-supplied timestamp, using public market data when available. It is descriptive context, not a prediction, betting instruction, or buy/sell recommendation.
 
+Example polling clients are available in:
+
+```txt
+examples/delta-polling.js
+examples/delta-polling.py
+```
+
+They show the intended loop: discover freshness metadata, decide whether to pay, handle the `402`, retry with `X-PAYMENT`, parse receipt + delta data, update `since`, and back off on errors.
+
 ## Pricing
 
 ```bash

@@ -35,6 +35,7 @@ const paymentAck = process.env.MAINNET_PAYMENT_ACK?.trim();
 const maxUsdc = process.env.MAINNET_MAX_USDC?.trim() || DEFAULT_MAX_USDC;
 const expectedSeller = process.env.MAINNET_EXPECTED_SELLER_ADDRESS?.trim();
 const paidPath = process.env.MAINNET_PAID_PATH?.trim() || "/api/markets/brief?slug=will-gideon-saar-be-the-next-prime-minister-of-israel";
+const isDeltaProof = paidPath.startsWith("/api/markets/delta");
 
 function toUsdcAtomic(value) {
   const [whole = "0", fraction = ""] = String(value).split(".");
@@ -102,7 +103,7 @@ async function readReceiptEvents(receiptId) {
   const expectedTypes = [
     "payment_verified",
     "receipt_generated",
-    "market_brief_unlocked"
+    isDeltaProof ? "market_delta_unlocked" : "market_brief_unlocked"
   ];
   const foundTypes = new Set(
     (body.events ?? [])
@@ -154,7 +155,7 @@ async function run() {
   console.log(`price: ${requirements.amount} ${requirements.asset}`);
   console.log(`network: ${requirements.network}`);
   console.log(`seller: ${requirements.payTo}`);
-  console.log("test type: market brief");
+  console.log(`test type: market ${isDeltaProof ? "delta" : "brief"}`);
 
   if (!privateKey || paymentAck !== PAYMENT_ACK) {
     console.log("\nPreflight passed. No real payment was sent.");
@@ -206,15 +207,22 @@ async function run() {
   console.log(`\nreceipt: ${paidBody.receipt?.id ?? "missing"}`);
   console.log(`receipt network: ${paidBody.receipt?.network ?? "missing"}`);
   console.log(`receipt amount: ${paidBody.receipt?.amount ?? "missing"} ${paidBody.receipt?.asset ?? ""}`.trim());
-  console.log(`market brief status: ${paidBody.data?.status ?? "missing"}`);
-  console.log(`market brief slug: ${paidBody.data?.market?.slug ?? "missing"}`);
+  console.log(`market ${isDeltaProof ? "delta" : "brief"} status: ${paidBody.data?.status ?? "missing"}`);
+  console.log(`market ${isDeltaProof ? "delta" : "brief"} slug: ${paidBody.data?.market?.slug ?? "missing"}`);
+  if (isDeltaProof) {
+    console.log(`market delta priority: ${paidBody.data?.significance?.repeatCheckPriority ?? "missing"}`);
+    console.log(`market delta window until: ${paidBody.data?.window?.until ?? "missing"}`);
+  }
   printBalances("after", balancesAfter);
   console.log(`buyer delta USDC: ${formatUnits(buyerDelta, 6)}`);
   console.log(`seller delta USDC: ${formatUnits(sellerDelta, 6)}`);
 
   requireCondition(paidBody.receipt?.id, "Paid response did not include a receipt id.");
   requireCondition(paidBody.receipt?.network === MAINNET_NETWORK, "Paid receipt is not Base mainnet.");
-  requireCondition(paidBody.data?.briefType === "read-only-market-intelligence", "Paid response did not unlock a market brief.");
+  requireCondition(
+    paidBody.data?.briefType === (isDeltaProof ? "read-only-market-delta" : "read-only-market-intelligence"),
+    `Paid response did not unlock a market ${isDeltaProof ? "delta" : "brief"}.`
+  );
   requireCondition(buyerDelta >= toUsdcAtomic(requirements.amount), "Buyer USDC balance did not decrease by the payment amount yet.");
   requireCondition(sellerDelta >= toUsdcAtomic(requirements.amount), "Seller USDC balance did not increase by the payment amount yet.");
 
