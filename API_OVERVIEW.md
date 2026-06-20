@@ -2,7 +2,7 @@
 
 x402nano is a machine-payable Polymarket market intelligence API for autonomous agents, bots, and API builders.
 
-It exposes a free discovery route plus paid read-only market brief and market delta routes. Paid routes use the x402 flow:
+It exposes a free discovery route plus paid read-only market briefs, market deltas, and webhook alert registrations. Paid routes use the x402 flow:
 
 ```txt
 HTTP 402 -> X-PAYMENT -> Base USDC -> unlocked JSON brief
@@ -191,16 +191,87 @@ examples/delta-polling.py
 
 They show the intended loop: discover freshness metadata, decide whether to pay, handle the `402`, retry with `X-PAYMENT`, parse receipt + delta data, update `since`, and back off on errors.
 
+## Webhook Alert Registration
+
+```bash
+curl -i -X POST "https://x402nano.onrender.com/api/alerts/register" \
+  -H "Content-Type: application/json" \
+  -d '{"webhookUrl":"https://my-agent.com/webhook","slugs":["will-gideon-saar-be-the-next-prime-minister-of-israel"],"threshold":0.07,"checkIntervalMinutes":15}'
+```
+
+A valid unpaid request returns `402 Payment Required` with an amount of `0.08 USDC`. Retry the same body with a valid payment:
+
+```bash
+curl -X POST "https://x402nano.onrender.com/api/alerts/register" \
+  -H "Content-Type: application/json" \
+  -H "X-PAYMENT: <signed-x402-payment>" \
+  -d '{"webhookUrl":"https://my-agent.com/webhook","slugs":["will-gideon-saar-be-the-next-prime-minister-of-israel"],"threshold":0.07,"checkIntervalMinutes":15}'
+```
+
+Successful registration returns `201 Created`:
+
+```json
+{
+  "status": "registered",
+  "receipt": {
+    "id": "receipt-id-after-payment",
+    "amount": "0.08",
+    "asset": "USDC",
+    "network": "eip155:8453"
+  },
+  "alert": {
+    "id": "2f7b2f37-a66c-49de-9893-f43c5af83db4",
+    "payerAddress": "external-x402-client",
+    "webhookUrl": "https://my-agent.com/webhook",
+    "slugs": ["will-gideon-saar-be-the-next-prime-minister-of-israel"],
+    "threshold": 0.07,
+    "checkIntervalMinutes": 15,
+    "active": true,
+    "createdAt": "2026-06-20T09:45:12.000Z",
+    "lastChecked": null,
+    "lastTriggered": null
+  }
+}
+```
+
+The in-process checker wakes every 10 minutes and respects each registration's `checkIntervalMinutes`. Its first check establishes a baseline. A later absolute probability change at or above `threshold` produces a `significant_delta` POST. Failed webhook deliveries are attempted up to three times.
+
+Webhook payload:
+
+```json
+{
+  "event": "significant_delta",
+  "alertId": "2f7b2f37-a66c-49de-9893-f43c5af83db4",
+  "slug": "will-gideon-saar-be-the-next-prime-minister-of-israel",
+  "change": {
+    "outcome": "Yes",
+    "previousProb": 0.62,
+    "currentProb": 0.71,
+    "absoluteChange": 0.09,
+    "direction": "up"
+  },
+  "timestamp": "2026-06-20T09:45:12.000Z"
+}
+```
+
+Webhook destinations must use public HTTPS. Each registration accepts 1–20 unique slugs. Defaults are `threshold: 0.07` (seven probability points) and `checkIntervalMinutes: 15`.
+
+Webhook Alerts use SQLite at `ALERT_DB_PATH`. The local default is `./data/x402nano-alerts.sqlite`; Render uses `/data/alerts.db`. Active alerts, checker state, and probability baselines are reloaded after process restart and on every checker run. The example client is `examples/register-alert.js`.
+
+On Render, `/data` must be a Persistent Disk mounted on a paid single-instance web service. The checker uses an in-process guard plus an expiring SQLite lock to prevent overlapping runs. The scheduler wakes every 10 minutes, so alerts are generally checked every 10-20 minutes depending on Render uptime, scheduler alignment, and each alert's configured interval.
+
 ## Pricing
 
 ```bash
 curl https://x402nano.onrender.com/api/pricing
 ```
 
-Current paid brief price:
+Current prices:
 
 ```txt
-0.05 USDC
+Market brief: 0.05 USDC
+Market delta: 0.05 USDC
+Alert registration: 0.08 USDC
 ```
 
 Network:
@@ -223,7 +294,7 @@ curl https://x402nano.onrender.com/api/schema
 
 Returns the JSON schema for the paid market brief response.
 
-The response also includes a `schemas.marketDelta` object for the paid market delta response.
+The response also includes `schemas.marketDelta` and `schemas.alertRegistration` objects.
 
 ## Receipts
 
@@ -275,6 +346,7 @@ read-only Polymarket public-data summaries
 machine-readable JSON
 x402 payment challenge and receipt flow
 market delta briefs for agent polling loops
+webhook alerts for significant probability changes
 ```
 
 x402nano does not provide:
@@ -292,9 +364,15 @@ API keys
 ## Operational Endpoints
 
 ```txt
+GET /health
 GET /api/version
 GET /api/health
 GET /api/events
+GET /api/alerts/status
 ```
 
 `/api/events` is an in-memory operational log. It is useful for recent quote/payment/unlock debugging, but it is not a production analytics database.
+
+`/health` is the lightweight Render/GitHub liveness endpoint and returns the active alert count. `/api/alerts/status` returns total and active alert counts, persisted last-check state, scheduler interval, SQLite storage mode, and the latest sanitized checker error.
+
+Render setup requires a persistent disk mounted at `/data`, `ALERT_DB_PATH=/data/alerts.db`, a disk-compatible paid plan, one service instance, and `/health` as the health-check path. The repository Blueprint configures these values. Persistent disks disable horizontal scaling and zero-downtime deploys for this service.

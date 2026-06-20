@@ -2,7 +2,7 @@
 
 Machine-payable market intelligence API for AI agents and bots.
 
-x402nano serves read-only Polymarket market briefs behind an HTTP 402 payment flow. An agent requests a market brief, receives a payment challenge, retries with `X-PAYMENT`, and receives unlocked JSON plus a receipt.
+x402nano serves read-only Polymarket market briefs, deltas, and webhook alert registrations behind an HTTP 402 payment flow. An agent receives a payment challenge, retries with `X-PAYMENT`, and receives the purchased intelligence object plus a receipt.
 
 This is market intelligence infrastructure, not trading advice.
 
@@ -30,6 +30,12 @@ Paid market delta endpoint:
 
 ```http
 GET https://x402nano.onrender.com/api/markets/delta?slug=will-gideon-saar-be-the-next-prime-minister-of-israel&since=2026-06-15T12:00:00Z
+```
+
+Paid webhook alert registration:
+
+```http
+POST https://x402nano.onrender.com/api/alerts/register
 ```
 
 ## Mainnet Proof
@@ -218,6 +224,66 @@ examples/delta-polling.py
 
 Both examples show the intended agent loop: inspect freshness metadata, request a delta, handle the `402`, retry with an x402 payment from a caller-provided signing hook, parse the receipt and delta payload, then update `since` after a successful response.
 
+## Webhook Alerts
+
+Webhook Alerts let an agent pay once to register monitoring for one or more Polymarket slugs.
+
+```http
+POST /api/alerts/register
+Content-Type: application/json
+```
+
+```json
+{
+  "webhookUrl": "https://my-agent.com/webhook",
+  "slugs": ["will-gideon-saar-be-the-next-prime-minister-of-israel"],
+  "threshold": 0.07,
+  "checkIntervalMinutes": 15
+}
+```
+
+The unpaid request returns an x402 challenge for `0.08 USDC`. Retry the same POST body with `X-PAYMENT`. A successful registration returns `201 Created`, a receipt, and the alert record.
+
+The background checker runs every 10 minutes. The first successful market check establishes a probability baseline. Later checks POST `significant_delta` to the webhook when the monitored outcome moves by at least the configured absolute threshold. Delivery is attempted up to three times.
+
+`webhookUrl` must use public HTTPS. Defaults are `threshold: 0.07` and `checkIntervalMinutes: 15`. A registration supports up to 20 unique slugs.
+
+Registrations, timestamps, checker state, and probability baselines are stored in SQLite. Locally, the default is `./data/x402nano-alerts.sqlite`. On Render, the default is `/data/alerts.db`; `render.yaml` also sets `ALERT_DB_PATH=/data/alerts.db`. Active alerts are reloaded from SQLite on every checker run.
+
+The checker uses both an in-process guard and an expiring SQLite lock so overlapping runs are skipped. Current timing is approximate: the scheduler wakes every 10 minutes, so alerts are generally checked every 10-20 minutes depending on Render uptime, scheduler alignment, and the alert's configured interval.
+
+Example registration client:
+
+```txt
+examples/register-alert.js
+```
+
+### Render Persistent Disk Setup
+
+Render Persistent Disks require a paid web-service instance. The included `render.yaml` uses the `starter` plan, one instance, and a 1 GB disk. Applying it will create Render charges.
+
+Dashboard setup:
+
+1. Open the `x402nano` service in Render and upgrade it from `free` to `starter` or another disk-compatible paid plan.
+2. Open **Disks**, add a disk named `x402nano-alert-data`, choose 1 GB, and mount it at `/data`.
+3. Open **Environment** and set `ALERT_DB_PATH=/data/alerts.db`.
+4. Set the service health-check path to `/health`.
+5. Keep the service at one instance; Render disks cannot be shared across horizontally scaled instances.
+6. Deploy, then confirm `/health` and `/api/alerts/status` both return `200`.
+
+Only files under `/data` survive deploys and restarts. The disk is mounted at runtime, not during the build. Attaching a disk disables zero-downtime deploys, so short deployment interruptions are expected.
+
+Operational checks:
+
+```http
+GET /health
+GET /api/alerts/status
+```
+
+`/health` returns `{ "status": "ok", "alertCount": 0 }`. `/api/alerts/status` reports total and active alerts, the last checker time/status, scheduler interval, and sanitized error state without exposing webhook URLs.
+
+The GitHub workflow `.github/workflows/render-keepalive.yml` pings `/health` every five minutes. GitHub schedules can be delayed and should be treated as an external liveness check, not a hard real-time scheduler.
+
 ## Local Proof Command
 
 Preflight only:
@@ -240,27 +306,6 @@ $env:MAINNET_PAYMENT_ACK="PAY_REAL_0.05_USDC"
 npm.cmd run agent:mainnet
 ```
 
-## Launch Ask
-
-x402nano is looking for feedback from 20 AI agent, trading bot, and market-data builders.
-
-What to check:
-
-```txt
-Would a machine-readable market brief be useful to your agent?
-Is 0.05 USDC per brief the right shape for testing?
-What fields would your bot need before paying for a brief?
-Would you rather call this directly, through an SDK, or through another agent framework?
-```
-
-Positioning:
-
-```txt
-Stop scraping. Use a machine-payable API for market briefs.
-0.05 USDC per read-only market brief on Base.
-No account. No API key. HTTP 402 and X-PAYMENT.
-```
-
 ## Current Scope
 
 In scope:
@@ -271,6 +316,9 @@ read-only market intelligence
 free trending endpoint
 paid market brief endpoint
 paid market delta endpoint
+paid webhook alert registration
+10-minute in-process alert checker
+three-attempt HTTPS webhook delivery
 HTTP 402 challenge
 Base mainnet USDC unlock
 receipt and proof
@@ -284,7 +332,8 @@ trade execution
 Telegram bot
 lead generation
 x402 consulting
-new product features before feedback
+external database or multi-instance alert coordination
+exactly timed delivery during deploy interruptions or platform outages
 ```
 
 ## Development

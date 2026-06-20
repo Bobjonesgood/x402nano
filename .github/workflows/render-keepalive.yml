@@ -2,8 +2,15 @@ name: Render Keepalive
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render-keepalive
+  cancel-in-progress: true
 
 jobs:
   ping:
@@ -12,10 +19,6 @@ jobs:
     steps:
       - name: Ping x402nano health
         run: |
-          curl --fail --silent --show-error --retry 2 --retry-delay 5 \
-            https://x402nano.onrender.com/api/health
-
-      - name: Ping x402nano version
-        run: |
-          curl --fail --silent --show-error --retry 2 --retry-delay 5 \
-            https://x402nano.onrender.com/api/version
+          curl --fail --silent --show-error \
+            --max-time 60 --retry 3 --retry-delay 5 \
+            https://x402nano.onrender.com/health

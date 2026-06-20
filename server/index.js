@@ -6,9 +6,11 @@ import { fileURLToPath } from "node:url";
 import { encodePaymentRequiredHeader, encodePaymentResponseHeader } from "@x402/core/http";
 import { DEFAULT_STABLECOINS } from "@x402/evm";
 import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
+import { closeDb, initDb } from "./database.js";
 import { buildMarketBrief, buildMarketDelta, marketPreview } from "./market-briefs.js";
 import { createFacilitatorProvider, createSandboxProvider } from "./payment-providers.js";
 import { fetchMarketBySlug, fetchMarketPriceHistory, fetchTrendingMarkets, polymarketStatus } from "./polymarket-client.js";
+import { createWebhookAlertService, validateAlertRegistration } from "./webhook-alerts.js";
 
 const PORT = Number(process.env.PORT ?? 4021);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -17,6 +19,7 @@ const FACILITATOR_SECRET = process.env.FACILITATOR_SECRET ?? "sandbox-facilitato
 const SELLER_ADDRESS = process.env.SELLER_ADDRESS ?? process.env.PARTNER_SELLER_ADDRESS ?? "0xSellerPremiumLeadDesk";
 const BUYER_ADDRESS = process.env.BUYER_ADDRESS ?? "0xAutonomousAgentWallet";
 const PRICE_USDC = process.env.PRICE_USDC ?? "0.05";
+const ALERT_REGISTRATION_PRICE_USDC = process.env.ALERT_REGISTRATION_PRICE_USDC ?? "0.08";
 const NETWORK = process.env.X402_NETWORK ?? "eip155:84532";
 const ASSET = process.env.X402_ASSET ?? "USDC";
 const API_NAME = "x402nano Market Intelligence API";
@@ -25,6 +28,7 @@ const RELEASE_NAME = process.env.RELEASE_NAME ?? "x402nano Machine-Payable Marke
 const PAYMENT_HEADER = "X-PAYMENT";
 const MARKET_BRIEF_PATH = "/api/markets/brief";
 const MARKET_DELTA_PATH = "/api/markets/delta";
+const ALERT_REGISTER_PATH = "/api/alerts/register";
 const ORBIS_MARKET_BRIEF_PATH = "/api/orbis/markets/brief-9f3d2b7a6c4e4892b1a0d5f8e7c6a3b9f4e1a8c2d6";
 const RESOURCE_PATH = MARKET_BRIEF_PATH;
 const ADMIN_TOKEN = process.env.LEAD_PACK_ADMIN_TOKEN?.trim() ?? "";
@@ -36,6 +40,7 @@ const LEAD_PACK_FILE = process.env.LEAD_PACK_FILE
 const LEAD_PACK_FILE_REFRESH_MS = Number(process.env.LEAD_PACK_FILE_REFRESH_MS ?? 30000);
 const MARKET_BRIEF_ENABLED = process.env.MARKET_BRIEF_ENABLED !== "false";
 const PAYMENT_TTL_MS = 5 * 60 * 1000;
+const MAX_REQUEST_BODY_BYTES = 64 * 1024;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 90;
 const ORBIS_RATE_LIMIT_MAX_REQUESTS = 20;
@@ -219,10 +224,16 @@ function marketProductStatus() {
     paidResource: `${MARKET_BRIEF_PATH}?slug={polymarket-slug}`,
     paidResources: [
       `${MARKET_BRIEF_PATH}?slug={polymarket-slug}`,
-      `${MARKET_DELTA_PATH}?slug={polymarket-slug}&since={iso-timestamp}`
+      `${MARKET_DELTA_PATH}?slug={polymarket-slug}&since={iso-timestamp}`,
+      ALERT_REGISTER_PATH
     ],
     output: "read-only market intelligence JSON",
     price: `${PRICE_USDC} ${ASSET}`,
+    pricing: {
+      marketBrief: `${PRICE_USDC} ${ASSET}`,
+      marketDelta: `${PRICE_USDC} ${ASSET}`,
+      alertRegistration: `${ALERT_REGISTRATION_PRICE_USDC} ${ASSET}`
+    },
     network: NETWORK,
     disclaimer: "Informational only; no trading, betting, or financial advice."
   };
@@ -283,6 +294,7 @@ function productionConfigErrors() {
   if (PAYMENT_MODE !== "facilitator") errors.push("Base mainnet requires X402_PAYMENT_MODE=facilitator.");
   if (ASSET !== "USDC") errors.push("Base mainnet requires X402_ASSET=USDC.");
   if (PRICE_USDC !== "0.05") errors.push("Base mainnet launch requires PRICE_USDC=0.05.");
+  if (ALERT_REGISTRATION_PRICE_USDC !== "0.08") errors.push("Base mainnet alert registration requires ALERT_REGISTRATION_PRICE_USDC=0.08.");
   if (!EVM_ADDRESS_PATTERN.test(SELLER_ADDRESS)) errors.push("Base mainnet requires a valid SELLER_ADDRESS.");
   if (LEAD_PACK_MODE !== "production") errors.push("Base mainnet requires LEAD_PACK_MODE=production.");
   if (productionLeadPack.error) errors.push(productionLeadPack.error);
@@ -297,7 +309,7 @@ const rateLimits = new Map();
 const eventLog = [];
 
 function isProtectedResource(pathname) {
-  return pathname === MARKET_BRIEF_PATH || pathname === MARKET_DELTA_PATH;
+  return pathname === MARKET_BRIEF_PATH || pathname === MARKET_DELTA_PATH || pathname === ALERT_REGISTER_PATH;
 }
 
 function isLeadPackResource(pathname) {
@@ -310,6 +322,19 @@ function isMarketBriefResource(pathname) {
 
 function isMarketDeltaResource(pathname) {
   return pathname === MARKET_DELTA_PATH;
+}
+
+function isAlertRegistrationResource(pathname) {
+  return pathname === ALERT_REGISTER_PATH;
+}
+
+function priceForResource(resource = RESOURCE_PATH) {
+  try {
+    const parsed = new URL(resource, "https://x402nano.local");
+    return isAlertRegistrationResource(parsed.pathname) ? ALERT_REGISTRATION_PRICE_USDC : PRICE_USDC;
+  } catch {
+    return resource === ALERT_REGISTER_PATH ? ALERT_REGISTRATION_PRICE_USDC : PRICE_USDC;
+  }
 }
 
 function paymentResourceFromUrl(url) {
@@ -427,6 +452,15 @@ const paymentProvider =
         canonicalPayment,
         walletPaymentMessage
       });
+
+const alertService = createWebhookAlertService({
+  database: initDb(),
+  fetchMarketBySlug,
+  log: (type, details) => {
+    logEvent(type, details);
+    if (type.includes("failed")) console.error(`[webhook-alerts] ${type}: ${details.reason ?? "unknown error"}`);
+  }
+});
 
 const leadSchema = {
   type: "object",
@@ -709,6 +743,31 @@ const marketDeltaSchema = {
   }
 };
 
+const alertRegistrationSchema = {
+  type: "object",
+  required: ["status", "receipt", "alert"],
+  properties: {
+    status: { type: "string", enum: ["registered"] },
+    receipt: marketBriefSchema.properties.receipt,
+    alert: {
+      type: "object",
+      required: ["id", "payerAddress", "webhookUrl", "slugs", "threshold", "checkIntervalMinutes", "active", "createdAt"],
+      properties: {
+        id: { type: "string", format: "uuid" },
+        payerAddress: { type: "string" },
+        webhookUrl: { type: "string", format: "uri" },
+        slugs: { type: "array", items: { type: "string" } },
+        threshold: { type: "number", exclusiveMinimum: 0, maximum: 1 },
+        checkIntervalMinutes: { type: "integer", minimum: 10, maximum: 1440 },
+        active: { type: "boolean" },
+        createdAt: { type: "string", format: "date-time" },
+        lastChecked: { type: ["string", "null"], format: "date-time" },
+        lastTriggered: { type: ["string", "null"], format: "date-time" }
+      }
+    }
+  }
+};
+
 const bazaarMarketBriefOutputExample = {
   status: "unlocked",
   receipt: {
@@ -873,6 +932,56 @@ const bazaarMarketDeltaDiscovery = declareDiscoveryExtension({
   }
 });
 
+const bazaarAlertRegistrationOutputExample = {
+  status: "registered",
+  receipt: {
+    id: "receipt-id-after-payment",
+    payer: "external-x402-client",
+    seller: SELLER_ADDRESS,
+    amount: ALERT_REGISTRATION_PRICE_USDC,
+    asset: ASSET,
+    network: NETWORK,
+    settledAt: "2026-06-20T09:45:12.000Z"
+  },
+  alert: {
+    id: "2f7b2f37-a66c-49de-9893-f43c5af83db4",
+    payerAddress: "external-x402-client",
+    webhookUrl: "https://my-agent.com/webhook",
+    slugs: ["will-gideon-saar-be-the-next-prime-minister-of-israel"],
+    threshold: 0.07,
+    checkIntervalMinutes: 15,
+    active: true,
+    createdAt: "2026-06-20T09:45:12.000Z",
+    lastChecked: null,
+    lastTriggered: null
+  }
+};
+
+const bazaarAlertRegistrationDiscovery = declareDiscoveryExtension({
+  method: "POST",
+  bodyType: "json",
+  input: {
+    webhookUrl: "https://my-agent.com/webhook",
+    slugs: ["will-gideon-saar-be-the-next-prime-minister-of-israel"],
+    threshold: 0.07,
+    checkIntervalMinutes: 15
+  },
+  inputSchema: {
+    properties: {
+      webhookUrl: { type: "string", format: "uri", description: "Public HTTPS webhook destination." },
+      slugs: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 20 },
+      threshold: { type: "number", exclusiveMinimum: 0, maximum: 1, default: 0.07 },
+      checkIntervalMinutes: { type: "integer", minimum: 10, maximum: 1440, default: 15 }
+    },
+    required: ["webhookUrl", "slugs"],
+    additionalProperties: false
+  },
+  output: {
+    example: bazaarAlertRegistrationOutputExample,
+    schema: alertRegistrationSchema
+  }
+});
+
 function json(res, statusCode, body, extraHeaders = {}) {
   res.writeHead(statusCode, {
     "Content-Type": "application/json",
@@ -941,6 +1050,11 @@ function versionPayload() {
       network: NETWORK,
       asset: ASSET,
       amount: PRICE_USDC,
+      amounts: {
+        marketBrief: PRICE_USDC,
+        marketDelta: PRICE_USDC,
+        alertRegistration: ALERT_REGISTRATION_PRICE_USDC
+      },
       sellerWallet: sellerWalletStatus()
     },
     product: marketProductStatus(),
@@ -1064,20 +1178,23 @@ function paymentRequirements(resource = RESOURCE_PATH, filter = { active: false 
   pruneExpiredRequirements();
   const isMarketBrief = resource.startsWith(MARKET_BRIEF_PATH);
   const isMarketDelta = resource.startsWith(MARKET_DELTA_PATH);
+  const isAlertRegistration = resource.startsWith(ALERT_REGISTER_PATH);
 
   const requirements = {
     x402Version: PAYMENT_MODE === "facilitator" ? "1" : "sandbox-1",
     scheme: "exact",
     network: NETWORK,
     asset: ASSET,
-    amount: PRICE_USDC,
+    amount: priceForResource(resource),
     payTo: SELLER_ADDRESS,
     resource,
-    description: isMarketDelta
-      ? "x402nano read-only Polymarket market delta brief. Informational only; no trading, betting, or financial advice."
-      : isMarketBrief
-        ? "x402nano read-only Polymarket market intelligence brief. Informational only; no trading, betting, or financial advice."
-        : "Legacy paid resource retired. Use /api/markets/brief?slug=... for x402nano market briefs.",
+    description: isAlertRegistration
+      ? "x402nano webhook alert registration for read-only Polymarket probability changes. Informational only; no trading, betting, or financial advice."
+      : isMarketDelta
+        ? "x402nano read-only Polymarket market delta brief. Informational only; no trading, betting, or financial advice."
+        : isMarketBrief
+          ? "x402nano read-only Polymarket market intelligence brief. Informational only; no trading, betting, or financial advice."
+          : "Legacy paid resource retired. Use /api/markets/brief?slug=... for x402nano market briefs.",
     mimeType: "application/json",
     maxTimeoutSeconds: Math.floor(PAYMENT_TTL_MS / 1000),
     expiresAt: new Date(Date.now() + PAYMENT_TTL_MS).toISOString(),
@@ -1145,7 +1262,8 @@ function officialPaymentRequired(req, requirements, error = "Payment required") 
   const resourceUrl = `${origin}${requirements.resource}`;
   const isMarketBrief = requirements.resource.startsWith(MARKET_BRIEF_PATH);
   const isMarketDelta = requirements.resource.startsWith(MARKET_DELTA_PATH);
-  const isMarketIntel = isMarketBrief || isMarketDelta;
+  const isAlertRegistration = requirements.resource.startsWith(ALERT_REGISTER_PATH);
+  const isMarketIntel = isMarketBrief || isMarketDelta || isAlertRegistration;
   const environmentTag = paymentProvider.mode === "facilitator" && requirements.network === "eip155:8453"
     ? "mainnet"
     : requirements.network === "eip155:84532"
@@ -1157,20 +1275,29 @@ function officialPaymentRequired(req, requirements, error = "Payment required") 
     error,
     resource: {
       url: resourceUrl,
-      description: isMarketDelta
-        ? "Machine-payable read-only Polymarket market delta brief for agent polling loops. Informational only; no trading, betting, or financial advice."
-        : isMarketBrief
-          ? "Machine-payable read-only Polymarket market intelligence brief. Informational only; no trading, betting, or financial advice."
-          : "Legacy paid resource retired. Use the x402nano Polymarket market brief endpoint.",
+      description: isAlertRegistration
+        ? "Machine-payable webhook alert registration for significant Polymarket probability changes. Informational only; no trading, betting, or financial advice."
+        : isMarketDelta
+          ? "Machine-payable read-only Polymarket market delta brief for agent polling loops. Informational only; no trading, betting, or financial advice."
+          : isMarketBrief
+            ? "Machine-payable read-only Polymarket market intelligence brief. Informational only; no trading, betting, or financial advice."
+            : "Legacy paid resource retired. Use the x402nano Polymarket market brief endpoint.",
       mimeType: requirements.mimeType,
       serviceName: API_NAME,
       tags: isMarketIntel
         ? ["polymarket", "market-intelligence", "x402", "base", "read-only", environmentTag]
         : ["leads", "agents", "x402", "lead-intelligence", "service-business", environmentTag],
-      ...(isMarketIntel ? { freshness: freshnessMetadata(isMarketDelta ? "market-delta" : "market-brief") } : {})
+      ...(isMarketBrief || isMarketDelta ? { freshness: freshnessMetadata(isMarketDelta ? "market-delta" : "market-brief") } : {}),
+      ...(isAlertRegistration ? { alertPolicy: { checkerIntervalMinutes: 10, defaultThreshold: 0.07, defaultCheckIntervalMinutes: 15, storage: "sqlite" } } : {})
     },
     accepts: [officialPaymentRequirements(requirements, resourceUrl)],
-    extensions: isMarketDelta ? bazaarMarketDeltaDiscovery : isMarketBrief ? bazaarMarketBriefDiscovery : bazaarLeadPackDiscovery
+    extensions: isAlertRegistration
+      ? bazaarAlertRegistrationDiscovery
+      : isMarketDelta
+        ? bazaarMarketDeltaDiscovery
+        : isMarketBrief
+          ? bazaarMarketBriefDiscovery
+          : bazaarLeadPackDiscovery
   };
 }
 
@@ -1195,10 +1322,12 @@ function parsePaymentHeader(header) {
 
 function normalizeRequirements(requirements, payment = {}) {
   if (!requirements) return null;
+  const resource = normalizeResourceIdentifier(requirements.resource ?? requirements.extra?.resource ?? RESOURCE_PATH);
+  const expectedAmount = priceForResource(resource);
   const facilitatorAsset = facilitatorAssetRequirements({
     network: requirements.network,
     asset: ASSET,
-    amount: PRICE_USDC
+    amount: expectedAmount
   });
   const isFacilitatorUsdcRequirement =
     paymentProvider.mode === "facilitator" &&
@@ -1210,9 +1339,9 @@ function normalizeRequirements(requirements, payment = {}) {
     scheme: requirements.scheme,
     network: requirements.network,
     asset: isFacilitatorUsdcRequirement ? ASSET : requirements.asset,
-    amount: isFacilitatorUsdcRequirement ? PRICE_USDC : requirements.amount,
+    amount: isFacilitatorUsdcRequirement ? expectedAmount : requirements.amount,
     payTo: requirements.payTo,
-    resource: normalizeResourceIdentifier(requirements.resource ?? requirements.extra?.resource ?? RESOURCE_PATH),
+    resource,
     description: requirements.description ?? "x402nano protected market brief",
     mimeType: requirements.mimeType ?? "application/json",
     maxTimeoutSeconds: requirements.maxTimeoutSeconds ?? Math.floor(PAYMENT_TTL_MS / 1000),
@@ -1236,7 +1365,7 @@ function validateRequirements(requirements) {
   if (requirements.scheme !== "exact") return "Unsupported payment scheme.";
   if (requirements.network !== NETWORK) return "Unsupported network.";
   if (requirements.asset !== ASSET) return "Unsupported payment asset.";
-  if (requirements.amount !== PRICE_USDC) return "Incorrect payment amount.";
+  if (requirements.amount !== priceForResource(requirements.resource)) return "Incorrect payment amount.";
   if (requirements.payTo !== SELLER_ADDRESS) return "Incorrect seller address.";
   if (!isPaymentResource(requirements.resource)) return "Payment was signed for a different resource.";
   if (!requirements.nonce) return "Payment nonce is missing.";
@@ -1317,10 +1446,20 @@ async function verifyPayment(payment) {
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let body = "";
+    let bodyBytes = 0;
+    let tooLarge = false;
     req.on("data", chunk => {
+      bodyBytes += chunk.length;
+      if (bodyBytes > MAX_REQUEST_BODY_BYTES) {
+        tooLarge = true;
+        body = "";
+        return;
+      }
+      if (tooLarge) return;
       body += chunk;
     });
     req.on("end", () => {
+      if (tooLarge) return reject(new Error("Request body exceeds 64 KiB."));
       try {
         resolve(body ? JSON.parse(body) : {});
       } catch (error) {
@@ -1338,14 +1477,15 @@ function apiDiscovery(req) {
   const paidUrl = `${origin}${paidPath}`;
   const deltaPath = `${MARKET_DELTA_PATH}?slug=${exampleSlug}&since=${encodeURIComponent(exampleSince)}`;
   const deltaUrl = `${origin}${deltaPath}`;
+  const alertUrl = `${origin}${ALERT_REGISTER_PATH}`;
   const trendingUrl = `${origin}/api/markets/trending`;
 
   return {
     name: API_NAME,
     description: "Machine-payable read-only Polymarket market intelligence for AI agents and bots.",
-    version: "1.1.0",
+    version: "1.2.0",
     generatedAt: new Date().toISOString(),
-    what: "x402nano is a machine-payable Polymarket market intelligence API. Agents can discover markets for free, request a paid brief or delta brief, receive an HTTP 402 challenge, retry with X-PAYMENT, and get unlocked JSON plus a receipt.",
+    what: "x402nano is a machine-payable Polymarket market intelligence API. Agents can discover markets for free, purchase briefs or deltas, and register paid webhook alerts for significant probability changes.",
     whoFor: [
       "AI agent builders",
       "market-monitoring bots",
@@ -1389,18 +1529,22 @@ function apiDiscovery(req) {
         "resolution date/source context",
         "market movement, attention, and data completeness scores",
         "delta briefs for what changed since an agent's last check",
+        "webhook alert registration for significant probability changes",
         "data quality notes and safety boundaries"
       ]
     },
     links: {
       self: `${origin}/.well-known/x402.json`,
       health: `${origin}/api/health`,
+      keepaliveHealth: `${origin}/health`,
+      alertStatus: `${origin}/api/alerts/status`,
       version: `${origin}/api/version`,
       pricing: `${origin}/api/pricing`,
       schema: `${origin}/api/schema`,
       trendingMarkets: trendingUrl,
       paidResource: paidUrl,
       paidDeltaResource: deltaUrl,
+      paidAlertRegistration: alertUrl,
       sandboxSigner: paymentProvider.isClientSigningAvailable ? `${origin}/api/payments/sign` : null,
       receiptTemplate: `${origin}/api/receipts/{receiptId}`
     },
@@ -1438,6 +1582,25 @@ function apiDiscovery(req) {
         flow: ["discover", "request market delta", "receive 402 requirements", "sign payment", "retry with X-PAYMENT", "receive receipt and market delta JSON"]
       },
       {
+        method: "POST",
+        path: ALERT_REGISTER_PATH,
+        description: "Registers a SQLite-backed webhook alert for significant Polymarket probability changes after a valid x402 payment is verified.",
+        price: `${ALERT_REGISTRATION_PRICE_USDC} ${ASSET}`,
+        unlocks: "One webhook alert registration plus receipt.",
+        payment: {
+          header: PAYMENT_HEADER,
+          challengeStatus: 402,
+          requirementsField: "paymentRequirements",
+          retryBehavior: "Repeat the same POST body with X-PAYMENT set to the encoded payment payload."
+        },
+        responseSchema: "/api/schema",
+        defaults: { threshold: 0.07, checkIntervalMinutes: 15 },
+        checkerIntervalMinutes: 10,
+        storage: "sqlite",
+        persistenceWarning: "Hosting durability depends on ALERT_DB_PATH using storage retained by the platform.",
+        flow: ["submit valid alert body", "receive 402 requirements", "sign payment", "retry same POST with X-PAYMENT", "receive receipt and alert registration"]
+      },
+      {
         method: "GET",
         path: "/api/markets/trending",
         description: "Returns free Polymarket market candidates for agents to inspect before paying for a brief.",
@@ -1467,6 +1630,12 @@ function apiDiscovery(req) {
       paidDeltaRetry: {
         curl: `curl "${deltaUrl}" -H "${PAYMENT_HEADER}: <signed-x402-payment>"`,
         expectedStatusWithValidPayment: 200
+      },
+      paidAlertRegistration: {
+        curl: `curl -i -X POST "${alertUrl}" -H "Content-Type: application/json" -d '{"webhookUrl":"https://my-agent.com/webhook","slugs":["${exampleSlug}"],"threshold":0.07,"checkIntervalMinutes":15}'`,
+        expectedStatusWithoutPayment: 402,
+        retryHeader: `${PAYMENT_HEADER}: <signed-x402-payment>`,
+        expectedStatusWithValidPayment: 201
       },
       example402Response: {
         error: "Payment required",
@@ -1578,7 +1747,8 @@ function apiDiscovery(req) {
       response: marketBriefSchema,
       resources: {
         marketBrief: marketBriefSchema,
-        marketDelta: marketDeltaSchema
+        marketDelta: marketDeltaSchema,
+        alertRegistration: alertRegistrationSchema
       }
     }
   };
@@ -1640,6 +1810,15 @@ const server = http.createServer(async (req, res) => {
   const url = requestUrl(req);
   await refreshProductionLeadPack();
 
+  if (req.method === "GET" && url.pathname === "/health") {
+    try {
+      const alerts = alertService.status();
+      return json(res, 200, { status: "ok", alertCount: alerts.activeAlerts });
+    } catch (error) {
+      return json(res, 503, { status: "error", alertCount: 0, reason: error.message });
+    }
+  }
+
   if (req.method === "GET" && (url.pathname === "/api/discover" || url.pathname === "/.well-known/x402.json")) {
     return json(res, 200, apiDiscovery(req));
   }
@@ -1653,6 +1832,7 @@ const server = http.createServer(async (req, res) => {
       settlement: paymentProvider.settlement,
       sellerWallet: sellerWalletStatus(),
       product: marketProductStatus(),
+      alerts: alertService.status(),
       uptimeSeconds: Math.floor(process.uptime()),
       issuedQuotes: issuedRequirements.size,
       settledPayments: payments.size,
@@ -1669,11 +1849,17 @@ const server = http.createServer(async (req, res) => {
       resource: `${MARKET_BRIEF_PATH}?slug={polymarket-slug}`,
       resources: {
         marketBrief: `${MARKET_BRIEF_PATH}?slug={polymarket-slug}`,
-        marketDelta: `${MARKET_DELTA_PATH}?slug={polymarket-slug}&since={iso-timestamp}`
+        marketDelta: `${MARKET_DELTA_PATH}?slug={polymarket-slug}&since={iso-timestamp}`,
+        alertRegistration: ALERT_REGISTER_PATH
       },
       freeResource: "/api/markets/trending",
       proofResource: `${MARKET_BRIEF_PATH}?slug=will-gideon-saar-be-the-next-prime-minister-of-israel`,
       amount: PRICE_USDC,
+      amounts: {
+        marketBrief: PRICE_USDC,
+        marketDelta: PRICE_USDC,
+        alertRegistration: ALERT_REGISTRATION_PRICE_USDC
+      },
       asset: ASSET,
       network: NETWORK,
       seller: SELLER_ADDRESS,
@@ -1696,13 +1882,15 @@ const server = http.createServer(async (req, res) => {
       resource: `${MARKET_BRIEF_PATH}?slug={polymarket-slug}`,
       resources: {
         marketBrief: `${MARKET_BRIEF_PATH}?slug={polymarket-slug}`,
-        marketDelta: `${MARKET_DELTA_PATH}?slug={polymarket-slug}&since={iso-timestamp}`
+        marketDelta: `${MARKET_DELTA_PATH}?slug={polymarket-slug}&since={iso-timestamp}`,
+        alertRegistration: ALERT_REGISTER_PATH
       },
       contentType: "application/json",
       schema: marketBriefSchema,
       schemas: {
         marketBrief: marketBriefSchema,
-        marketDelta: marketDeltaSchema
+        marketDelta: marketDeltaSchema,
+        alertRegistration: alertRegistrationSchema
       }
     });
   }
@@ -1712,6 +1900,25 @@ const server = http.createServer(async (req, res) => {
       events: eventLog.slice(0, 25),
       totalRetained: eventLog.length
     });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/alerts/status") {
+    try {
+      const alerts = alertService.status();
+      return json(res, 200, {
+        status: "ok",
+        totalAlerts: alerts.registeredAlerts,
+        activeAlerts: alerts.activeAlerts,
+        lastCheckAt: alerts.lastCheckAt,
+        lastCheckStatus: alerts.lastCheckStatus,
+        lastErrorAt: alerts.lastErrorAt,
+        lastError: alerts.lastError,
+        schedulerIntervalMinutes: alerts.schedulerIntervalMinutes,
+        storage: alerts.storage
+      });
+    } catch (error) {
+      return json(res, 503, { status: "error", reason: error.message });
+    }
   }
 
   if (req.method === "GET" && url.pathname === "/api/markets/status") {
@@ -1840,13 +2047,19 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (req.method === "GET" && isProtectedResource(url.pathname)) {
+  const isProtectedMethod =
+    (req.method === "GET" && (isMarketBriefResource(url.pathname) || isMarketDeltaResource(url.pathname))) ||
+    (req.method === "POST" && isAlertRegistrationResource(url.pathname));
+
+  if (isProtectedMethod && isProtectedResource(url.pathname)) {
     const resource = paymentResourceFromUrl(url);
     const isLeadPack = isLeadPackResource(url.pathname);
     const isMarketBrief = isMarketBriefResource(url.pathname);
     const isMarketDelta = isMarketDeltaResource(url.pathname);
+    const isAlertRegistration = isAlertRegistrationResource(url.pathname);
     const filter = isLeadPack ? locationFilterFromUrl(url) : { active: false };
     let matchedLeadPack = [];
+    let alertInput = null;
 
     if (isLeadPack) {
       return json(res, 410, {
@@ -1857,8 +2070,23 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    if ((isMarketBrief || isMarketDelta) && !MARKET_BRIEF_ENABLED) {
+    if ((isMarketBrief || isMarketDelta || isAlertRegistration) && !MARKET_BRIEF_ENABLED) {
       return json(res, 404, { error: "Market intelligence API is disabled." });
+    }
+
+    if (isAlertRegistration) {
+      try {
+        const validation = validateAlertRegistration(await readBody(req));
+        if (!validation.ok) {
+          return json(res, 400, {
+            error: "Invalid alert registration",
+            reasons: validation.errors
+          });
+        }
+        alertInput = validation.value;
+      } catch {
+        return json(res, 400, { error: "Alert registration body must be valid JSON." });
+      }
     }
 
     if ((isMarketBrief || isMarketDelta) && !url.searchParams.get("slug")) {
@@ -1921,6 +2149,38 @@ const server = http.createServer(async (req, res) => {
           "PAYMENT-REQUIRED": paymentRequiredHeader
         }
       );
+    }
+
+    if (isAlertRegistration) {
+      const alert = alertService.register({
+        payerAddress: verification.receipt.payer,
+        ...alertInput
+      });
+      const paymentResponse = {
+        success: true,
+        transaction: verification.receipt.transaction ?? verification.receipt.id,
+        network: verification.receipt.network,
+        amount: verification.receipt.amount,
+        payer: verification.receipt.payer
+      };
+
+      logEvent("alert_registered", {
+        receiptId: verification.receipt.id,
+        alertId: alert.id,
+        payer: alert.payerAddress,
+        slugs: alert.slugs,
+        threshold: alert.threshold,
+        checkIntervalMinutes: alert.checkIntervalMinutes
+      });
+
+      return json(res, 201, {
+        status: "registered",
+        receipt: publicReceipt(verification.receipt),
+        alert
+      }, {
+        "PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse),
+        "X-PAYMENT-RESPONSE": encodePaymentResponseHeader(paymentResponse)
+      });
     }
 
     if (isMarketBrief) {
@@ -2012,7 +2272,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 404, {
         error: "API route not found",
         service: API_NAME,
-        available: ["/api/markets/trending", "/api/markets/brief?slug=...", "/api/markets/delta?slug=...&since=..."]
+        available: ["/api/markets/trending", "/api/markets/brief?slug=...", "/api/markets/delta?slug=...&since=...", ALERT_REGISTER_PATH, "/api/alerts/status"]
       });
     }
 
@@ -2031,6 +2291,27 @@ server.listen(PORT, HOST, () => {
     for (const error of configErrors) console.error(`- ${error}`);
     process.exit(1);
   }
+  const loadedAlerts = alertService.status();
+  console.log(`Loaded ${loadedAlerts.activeAlerts} active webhook alert(s) from SQLite.`);
+  alertService.start();
 
   console.log(`x402 seller server listening on http://${HOST}:${PORT}`);
 });
+
+let shuttingDown = false;
+function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  alertService.stop();
+  server.close(() => {
+    closeDb();
+    process.exit(0);
+  });
+  setTimeout(() => {
+    closeDb();
+    process.exit(1);
+  }, 5000).unref();
+}
+
+process.once("SIGTERM", shutdown);
+process.once("SIGINT", shutdown);
