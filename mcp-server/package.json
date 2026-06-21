@@ -1,0 +1,36 @@
+{
+  "name": "@x402nano/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local MCP tools for x402nano structured prediction-market intelligence.",
+  "type": "module",
+  "bin": {
+    "x402nano-mcp": "dist/index.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "node --import tsx --test test/*.test.ts",
+    "smoke": "npm run build && node scripts/smoke.mjs",
+    "inspect": "npm run build && npx @modelcontextprotocol/inspector node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "@x402/evm": "2.16.0",
+    "@x402/fetch": "2.16.0",
+    "viem": "^2.49.3",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "overrides": {
+    "ws": "^8.21.0"
+  }
+}

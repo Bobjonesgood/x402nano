@@ -1,5 +1,11 @@
 # x402nano
 
+## MCP Server
+
+x402nano includes a local stdio MCP server that exposes free market discovery and pricing tools plus guarded 0.05 USDC Market Brief and Market Delta tools. Buyer signing remains in the agent user's local environment; x402nano never receives or stores buyer private keys.
+
+See [mcp-server/README.md](mcp-server/README.md) for installation, MCP client configuration, unpaid preflight verification, and the controlled one-call payment procedure.
+
 Machine-payable market intelligence API for AI agents and bots.
 
 x402nano serves read-only Polymarket market briefs, deltas, and webhook alert registrations behind an HTTP 402 payment flow. An agent receives a payment challenge, retries with `X-PAYMENT`, and receives the purchased intelligence object plus a receipt.
