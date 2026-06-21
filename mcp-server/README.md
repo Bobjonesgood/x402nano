@@ -15,7 +15,11 @@ The MCP process runs in the agent user's environment. Buyer keys remain local an
 
 Paid tools are restricted to `https://x402nano.onrender.com`, Base mainnet (`eip155:8453`), Base USDC, the pinned x402nano seller wallet, and exactly `50000` atomic units. Calls are serialized so one local MCP process cannot sign two paid requests simultaneously.
 
+Paid tools also use conservative cumulative budgets. By default, one MCP process may attempt one 0.05 USDC payment, and the persistent UTC-day budget is also 0.05 USDC. A budget reservation is written before signing, so an interrupted or uncertain request cannot automatically spend again. Restarting the process does not reset the daily limit.
+
 The default request timeout is 60 seconds to tolerate an occasional Render cold start. It can be adjusted from 5 to 120 seconds with `X402NANO_REQUEST_TIMEOUT_MS`.
+
+The budget ledger defaults to `%LOCALAPPDATA%\x402nano\mcp-payment-budget.json` on Windows and `~/.x402nano/mcp-payment-budget.json` elsewhere. It contains payment-attempt amounts, timestamps, and resource URLs, but no wallet key or signed payment payload.
 
 ## Production Verification
 
@@ -92,6 +96,16 @@ await client.close();
 
 The custom agent should receive `X402NANO_PAYMENT_ACK`, `X402NANO_MAX_PAYMENT_USDC`, and `X402NANO_BUYER_PRIVATE_KEY` from its own local secret manager or process environment. Do not hard-code the buyer key in source code.
 
+Keep these cumulative controls at their defaults for a controlled installation:
+
+```text
+X402NANO_SESSION_MAX_CALLS=1
+X402NANO_SESSION_MAX_USDC=0.05
+X402NANO_DAILY_MAX_USDC=0.05
+```
+
+Increasing a cumulative limit is a deliberate operator decision. The implementation enforces a hard ceiling of 5.00 USDC and never raises a limit automatically.
+
 ## Authorize One Real Delta Call
 
 Use a dedicated, minimally funded Base wallet. Never place the key in the repository, a chat message, logs, or a hosted environment.
@@ -124,5 +138,9 @@ Immediately return `X402NANO_PAYMENT_ACK` to `PREFLIGHT_ONLY` after the proof ca
 - Base mainnet and Base USDC only.
 - Seller wallet pinned to x402nano's direct seller address.
 - Exact price must be 0.05 USDC and must not exceed the local cap.
+- Default session limit is one paid attempt and 0.05 USDC.
+- Default persistent UTC-day limit is 0.05 USDC across process restarts.
+- Budget is reserved before signing and invalid ledger data fails closed.
+- Cumulative limits cannot be configured above the 5.00 USDC hard ceiling.
 - Real payments require both a dedicated buyer key and the exact acknowledgement string.
 - No key values are logged or returned through MCP.

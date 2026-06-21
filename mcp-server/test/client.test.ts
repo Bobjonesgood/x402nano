@@ -2,9 +2,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { loadConfig } from "../src/config.js";
 import { X402NanoClient } from "../src/x402nano-client.js";
+import type { PaymentBudgetGuard } from "../src/payment-budget.js";
 
 const seller = "0x4cc3831eB479aCFb6D44631d4a30814508Cf52d3";
 const usdc = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+const allowOneBudget: PaymentBudgetGuard = {
+  reserve: async (_resource, amountAtomic) => ({
+    id: "test-reservation",
+    day: "2026-06-21",
+    amountAtomic,
+    sessionCalls: 1,
+    sessionReservedAtomic: amountAtomic,
+    dailyReservedAtomic: amountAtomic
+  })
+};
 
 function challenge(url: string, amount = "50000", includeHeader = false) {
   const paymentRequired = {
@@ -76,7 +87,7 @@ test("paid retry preserves the official x402 payment signature header", async ()
   const client = new X402NanoClient(loadConfig({
     X402NANO_PAYMENT_ACK: "PAY_REAL_0.05_USDC",
     X402NANO_BUYER_PRIVATE_KEY: `0x${"11".repeat(32)}`
-  }), fetchMock);
+  }), fetchMock, allowOneBudget);
 
   const result = await client.getMarketDelta("example-market", "2026-06-20T00:00:00.000Z");
   assert.equal(result.status, "unlocked");

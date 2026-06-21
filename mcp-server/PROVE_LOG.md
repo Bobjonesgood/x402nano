@@ -78,3 +78,16 @@ The public seller event log recorded all required proof events for receipt `ceb0
 ## Product Boundary
 
 x402nano remains read-only, non-custodial, and informational. The MCP tool does not trade, place bets, manage positions, hold buyer funds, or provide financial advice.
+
+## Post-Proof Safety Hardening
+
+After the production proof, the local MCP client added conservative cumulative controls for broader use:
+
+- One paid attempt per process by default.
+- A 0.05 USDC session budget by default.
+- A persistent 0.05 USDC UTC-day budget by default.
+- Budget reservation before payment signing.
+- Fail-closed behavior for corrupt ledger data.
+- A hard 5.00 USDC ceiling on configurable cumulative budgets.
+
+These controls do not modify the verified x402nano backend, payment price, seller wallet, or endpoint behavior.

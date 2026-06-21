@@ -25,3 +25,16 @@ test("uses a cold-start-tolerant timeout and rejects unsafe values", () => {
   assert.equal(loadConfig({}).requestTimeoutMs, 60_000);
   assert.throws(() => loadConfig({ X402NANO_REQUEST_TIMEOUT_MS: "200000" }), /must be an integer/);
 });
+
+test("defaults cumulative budgets to one 0.05 USDC attempt", () => {
+  const config = loadConfig({ X402NANO_BUDGET_LEDGER_PATH: "C:\\tmp\\x402nano-test-ledger.json" });
+  assert.equal(config.sessionMaxCalls, 1);
+  assert.equal(config.sessionMaxAtomic, 50_000n);
+  assert.equal(config.dailyMaxAtomic, 50_000n);
+});
+
+test("rejects invalid cumulative budget configuration", () => {
+  assert.throws(() => loadConfig({ X402NANO_SESSION_MAX_CALLS: "0" }), /SESSION_MAX_CALLS/);
+  assert.throws(() => loadConfig({ X402NANO_SESSION_MAX_USDC: "0.10" }), /DAILY_MAX_USDC/);
+  assert.throws(() => loadConfig({ X402NANO_DAILY_MAX_USDC: "6.00", X402NANO_SESSION_MAX_USDC: "0.05" }), /DAILY_MAX_USDC/);
+});

@@ -9,6 +9,7 @@ import {
   EXPECTED_SELLER,
   type AppConfig
 } from "./config.js";
+import { PaymentBudget, type PaymentBudgetGuard } from "./payment-budget.js";
 
 const PAID_PATHS = new Set(["/api/markets/brief", "/api/markets/delta"]);
 const FREE_PATHS = new Set(["/api/markets/trending", "/api/pricing"]);
@@ -28,7 +29,8 @@ export class X402NanoClient {
 
   constructor(
     private readonly config: AppConfig,
-    private readonly baseFetch: typeof globalThis.fetch = globalThis.fetch
+    private readonly baseFetch: typeof globalThis.fetch = globalThis.fetch,
+    private readonly budget: PaymentBudgetGuard = new PaymentBudget(config)
   ) {}
 
   async listTrendingMarkets(limit?: number): Promise<JsonObject> {
@@ -140,6 +142,8 @@ export class X402NanoClient {
     if (!this.config.buyerPrivateKey) {
       throw new Error("Payment preflight passed, but X402NANO_BUYER_PRIVATE_KEY is not configured.");
     }
+
+    await this.budget.reserve(url.toString(), EXPECTED_PAID_ATOMIC);
 
     const account = privateKeyToAccount(this.config.buyerPrivateKey);
     const paymentClient = new x402Client();
