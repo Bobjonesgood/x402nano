@@ -47,39 +47,7 @@ Call `list_trending_markets` and `get_market_pricing`. Calling a paid tool in th
 
 ## Configure an MCP Client
 
-### Claude Desktop on Windows
-
-Open Claude Desktop, select **Settings**, then **Developer**, then **Edit Config**. The official Windows configuration file is:
-
-```text
-C:\Users\bobjo\AppData\Roaming\Claude\claude_desktop_config.json
-```
-
-This is the expanded form of `%APPDATA%\Claude\claude_desktop_config.json`. Add this safe preflight configuration:
-
-```json
-{
-  "mcpServers": {
-    "x402nano": {
-      "command": "C:\\Program Files\\nodejs\\node.exe",
-      "args": [
-        "C:\\Users\\bobjo\\Documents\\Codex\\2026-05-17\\ok-ive-already-built-a-x402\\mcp-server\\dist\\index.js"
-      ],
-      "env": {
-        "X402NANO_PAYMENT_ACK": "PREFLIGHT_ONLY",
-        "X402NANO_MAX_PAYMENT_USDC": "0.05",
-        "X402NANO_REQUEST_TIMEOUT_MS": "60000"
-      }
-    }
-  }
-}
-```
-
-Save the file and completely restart Claude Desktop. The four x402nano tools should then appear in Claude's tool list.
-
-Keep the committed example in preflight mode. To enable paid calls, add `X402NANO_BUYER_PRIVATE_KEY` and change the acknowledgement only in the local Claude configuration. That file contains a plaintext local secret, so protect the Windows account, never commit the file, and return the acknowledgement to `PREFLIGHT_ONLY` when paid use is not intended.
-
-### Custom TypeScript Agent
+### TypeScript Agent
 
 Install the production MCP client SDK in the agent project:
 
