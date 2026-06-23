@@ -160,7 +160,7 @@ export function remoteMcpManifest(origin = "https://x402nano.onrender.com") {
     $schema: "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
     name: "io.github.bobjonesgood/x402nano",
     title: "x402nano",
-    description: "Machine-payable, read-only prediction-market intelligence and probability-change monitoring for AI agents.",
+    description: "Machine-payable prediction-market briefs and probability-change monitoring for AI agents.",
     repository: {
       url: "https://github.com/Bobjonesgood/x402nano",
       source: "github"
