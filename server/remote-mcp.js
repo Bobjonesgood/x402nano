@@ -158,7 +158,7 @@ function forwardedValue(value) {
 export function remoteMcpManifest(origin = "https://x402nano.onrender.com") {
   return {
     $schema: "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-    name: "io.github.bobjonesgood/x402nano",
+    name: "io.github.Bobjonesgood/x402nano",
     title: "x402nano",
     description: "Machine-payable prediction-market briefs and probability-change monitoring for AI agents.",
     repository: {

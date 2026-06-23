@@ -53,7 +53,7 @@ async function connectedClient() {
 
 test("registry manifest advertises the public Streamable HTTP endpoint", () => {
   const manifest = remoteMcpManifest();
-  assert.equal(manifest.name, "io.github.bobjonesgood/x402nano");
+  assert.equal(manifest.name, "io.github.Bobjonesgood/x402nano");
   assert.deepEqual(manifest.remotes, [{
     type: "streamable-http",
     url: "https://x402nano.onrender.com/mcp"
@@ -102,4 +102,3 @@ test("unpaid paid-tool call returns 0.05 Base USDC requirements and no content",
     await server.close();
   }
 });
-
