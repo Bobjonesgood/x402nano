@@ -2,9 +2,15 @@
 
 ## MCP Server
 
-x402nano includes a local stdio MCP server that exposes free market discovery and pricing tools plus guarded 0.05 USDC Market Brief and Market Delta tools. Buyer signing remains in the agent user's local environment; x402nano never receives or stores buyer private keys.
+x402nano exposes a public, stateless MCP endpoint using the production Streamable HTTP transport:
 
-See [mcp-server/README.md](mcp-server/README.md) for installation, MCP client configuration, unpaid preflight verification, and the controlled one-call payment procedure.
+```txt
+https://x402nano.onrender.com/mcp
+```
+
+The remote server exposes free market discovery and pricing tools plus x402-protected 0.05 USDC Market Brief and Market Delta tools. Paid MCP calls use the official x402 MCP payment flow: the caller signs locally, the facilitator verifies and settles on Base, and x402nano never receives or stores a buyer private key.
+
+The repository also retains the proven local stdio MCP server with conservative payment budgets. See [mcp-server/README.md](mcp-server/README.md) for both connection paths, unpaid verification, and client requirements. The standards-compliant remote server manifest is [server.json](server.json).
 
 Machine-payable market intelligence API for AI agents and bots.
 

@@ -22,6 +22,34 @@ https://x402nano.onrender.com
 curl https://x402nano.onrender.com/.well-known/x402.json
 ```
 
+## Remote MCP
+
+The public MCP endpoint uses the production Streamable HTTP transport:
+
+```txt
+https://x402nano.onrender.com/mcp
+```
+
+Machine-readable server metadata is available at:
+
+```txt
+https://x402nano.onrender.com/server.json
+https://x402nano.onrender.com/.well-known/mcp.json
+```
+
+Available MCP tools:
+
+| Tool | Price | Purpose |
+| --- | ---: | --- |
+| `list_trending_markets` | Free | Find active market slugs. |
+| `get_market_pricing` | Free | Inspect Base, USDC, seller, and tool pricing. |
+| `get_market_brief` | 0.05 USDC | Purchase one structured market brief. |
+| `get_market_delta` | 0.05 USDC | Purchase one probability-change report. |
+
+Any MCP client with Streamable HTTP support can connect and discover the tools. Automatic paid calls require an x402-aware MCP client, such as a client wrapped with the official `@x402/mcp` package. Standard MCP clients without x402 signing support can use the free tools and inspect paid tools, but cannot complete a USDC payment automatically.
+
+The remote server never accepts or stores buyer private keys. Payment payloads are supplied in MCP request metadata, verified by the configured facilitator, and settled to the pinned x402nano seller wallet on Base.
+
 Returns the machine-readable x402 manifest, seller metadata, supported network, price, payment header, and paid resource.
 
 ## Free Trending Markets

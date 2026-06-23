@@ -1,6 +1,20 @@
 # x402nano MCP Server
 
-Local stdio MCP tools for structured prediction-market intelligence and probability-change monitoring.
+MCP tools for structured prediction-market intelligence and probability-change monitoring.
+
+## Public Remote Server
+
+Connect a Streamable HTTP MCP client to:
+
+```txt
+https://x402nano.onrender.com/mcp
+```
+
+The registry manifest is published at `https://x402nano.onrender.com/server.json`. Free tools work with ordinary Streamable HTTP MCP clients. Paid tools require an x402-aware MCP client that places the signed payment payload in MCP request metadata. The official `@x402/mcp` package provides this client wrapper.
+
+The remote server holds only the seller and facilitator configuration already used by x402nano. It never holds buyer keys. The caller creates the payment locally, and successful calls settle 0.05 USDC directly to the pinned x402nano seller wallet on Base.
+
+The local stdio implementation below remains available for agents that prefer to run the buyer-side payment client themselves.
 
 The MCP process runs in the agent user's environment. Buyer keys remain local and are used only by the official x402 client. x402nano never receives or stores a buyer private key.
 

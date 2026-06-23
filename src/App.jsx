@@ -8,6 +8,8 @@ const freeEndpoint = "https://x402nano.onrender.com/api/markets/trending";
 const paidEndpoint = `https://x402nano.onrender.com/api/markets/brief?slug=${proofSlug}`;
 const discoveryEndpoint = "https://x402nano.onrender.com/.well-known/x402.json";
 const schemaEndpoint = "https://x402nano.onrender.com/api/schema";
+const mcpEndpoint = "https://x402nano.onrender.com/mcp";
+const mcpManifest = "https://x402nano.onrender.com/server.json";
 const proofTx = "https://basescan.org/tx/0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1";
 
 function shortAddress(address) {
@@ -45,17 +47,20 @@ function CopyButton({ value, children }) {
 function App() {
   const [version, setVersion] = useState(null);
   const [challenge, setChallenge] = useState(null);
+  const [mcp, setMcp] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     async function load() {
       try {
-        const [versionResponse, challengeResponse] = await Promise.all([
+        const [versionResponse, challengeResponse, mcpResponse] = await Promise.all([
           fetch("/api/version"),
-          fetch(`/api/markets/brief?slug=${proofSlug}`)
+          fetch(`/api/markets/brief?slug=${proofSlug}`),
+          fetch("/server.json")
         ]);
         setVersion(await versionResponse.json());
         setChallenge(await challengeResponse.json());
+        setMcp(await mcpResponse.json());
       } catch {
         setError("Live status could not be loaded. Refresh or check Render logs.");
       }
@@ -91,14 +96,15 @@ function App() {
             <code>Retry with X-PAYMENT</code>
             <code>Pay 0.05 USDC on Base</code>
             <code className="ok">Unlock movement + liquidity JSON</code>
+            <code className="ok">MCP: POST /mcp</code>
           </div>
         </div>
 
         <div className="heroCopy">
           <span className="eyebrow">x402nano</span>
-          <h1>Machine-payable Polymarket intelligence for autonomous agents.</h1>
+          <h1>Machine-payable prediction-market intelligence for autonomous agents.</h1>
           <p>
-            Agents can inspect free trending markets, request a paid read-only market brief, receive an HTTP 402 challenge, pay 0.05 USDC on Base, and unlock structured JSON plus a receipt.
+            Agents connect through HTTP or MCP, inspect free trending markets, pay 0.05 USDC on Base for a read-only brief or delta, and receive structured JSON plus settlement metadata.
           </p>
           <div className="heroActions">
             <a className="primaryButton" href={paidEndpoint} rel="noreferrer" target="_blank">
@@ -117,7 +123,7 @@ function App() {
         <StatusCard icon={Radio} label="Paid route" value={protectedBy402 ? "protected by 402" : challenge?.error ?? "checking"} tone={protectedBy402 ? "good" : "warn"} />
         <StatusCard icon={WalletCards} label="Settlement" value={mainnetLive ? "Base mainnet" : payment.mode ?? "loading"} tone={mainnetLive ? "good" : "warn"} />
         <StatusCard icon={DatabaseZap} label="Price" value={`${payment.amount ?? "0.05"} ${payment.asset ?? "USDC"}`} />
-        <StatusCard icon={ShieldCheck} label="Mode" value={payment.mode ?? "loading"} />
+        <StatusCard icon={ShieldCheck} label="Remote MCP" value={mcp?.remotes?.[0]?.type === "streamable-http" ? "streamable HTTP" : "checking"} />
       </section>
 
       {error && <div className="error">{error}</div>}
@@ -125,8 +131,8 @@ function App() {
       <section className="locationPanel">
         <div>
           <span className="eyebrow">live routes</span>
-          <h2>One free endpoint. One paid endpoint.</h2>
-          <p>The product surface is intentionally narrow so builders can test whether machine-payable market briefs are useful without signing up for an account or API key.</p>
+          <h2>Direct API and remote MCP.</h2>
+          <p>The same read-only intelligence is available through ordinary HTTP routes and a standards-compliant MCP server, without an account or API key.</p>
         </div>
         <div className="endpointBox local">
           <span>Free trending markets</span>
@@ -137,6 +143,24 @@ function App() {
           <span>Paid market brief</span>
           <code>{paidEndpoint}</code>
           <CopyButton value={paidEndpoint}>Copy paid endpoint</CopyButton>
+        </div>
+      </section>
+
+      <section className="locationPanel">
+        <div>
+          <span className="eyebrow">remote MCP</span>
+          <h2>Connect agents directly.</h2>
+          <p>Free tools work with Streamable HTTP MCP clients. Paid tools use x402 MCP payment metadata so the buyer signs locally and x402nano never receives the buyer key.</p>
+        </div>
+        <div className="endpointBox local">
+          <span>Streamable HTTP endpoint</span>
+          <code>{mcpEndpoint}</code>
+          <CopyButton value={mcpEndpoint}>Copy MCP endpoint</CopyButton>
+        </div>
+        <div className="endpointBox local">
+          <span>Registry manifest</span>
+          <code>{mcpManifest}</code>
+          <CopyButton value={mcpManifest}>Copy manifest URL</CopyButton>
         </div>
       </section>
 
@@ -226,15 +250,16 @@ function App() {
           <span className="eyebrow">builder copy</span>
           <h2>Describe x402nano in one paragraph.</h2>
         </div>
-        <pre>{`x402nano is a machine-payable Polymarket intelligence API for autonomous agents.
+        <pre>{`x402nano is machine-payable prediction-market intelligence for autonomous agents over HTTP and MCP.
 
 Free: GET /api/markets/trending
-Paid: GET /api/markets/brief?slug=...
+MCP: https://x402nano.onrender.com/mcp
+Paid: Market Brief or Market Delta, 0.05 USDC each
 
-Flow: HTTP 402 -> X-PAYMENT -> 0.05 USDC on Base -> read-only JSON + receipt.
+Flow: x402 payment -> 0.05 USDC on Base -> read-only JSON + settlement metadata.
 
 No account. No API key. No custody. No trading advice.`}</pre>
-        <CopyButton value={`x402nano is a machine-payable Polymarket intelligence API for autonomous agents.\n\nFree: GET /api/markets/trending\nPaid: GET /api/markets/brief?slug=...\n\nFlow: HTTP 402 -> X-PAYMENT -> 0.05 USDC on Base -> read-only JSON + receipt.\n\nNo account. No API key. No custody. No trading advice.`}>
+        <CopyButton value={`x402nano is machine-payable prediction-market intelligence for autonomous agents over HTTP and MCP.\n\nFree: GET /api/markets/trending\nMCP: https://x402nano.onrender.com/mcp\nPaid: Market Brief or Market Delta, 0.05 USDC each\n\nFlow: x402 payment -> 0.05 USDC on Base -> read-only JSON + settlement metadata.\n\nNo account. No API key. No custody. No trading advice.`}>
           Copy description
         </CopyButton>
       </section>
