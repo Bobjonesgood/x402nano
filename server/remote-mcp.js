@@ -90,25 +90,37 @@ function createProductionFacilitator(env) {
     throw new Error("CDP facilitator credentials are required for remote MCP settlement.");
   }
 
-  return new HTTPFacilitatorClient({
+  const httpClient = new HTTPFacilitatorClient({
     url,
     createAuthHeaders: async () => {
       if (apiKeyId && apiKeySecret) {
-        const [verify, settle, supported] = await Promise.all([
+        const [verify, settle] = await Promise.all([
           cdpBearerToken(url, "/verify", "POST", apiKeyId, apiKeySecret),
-          cdpBearerToken(url, "/settle", "POST", apiKeyId, apiKeySecret),
-          cdpBearerToken(url, "/supported", "GET", apiKeyId, apiKeySecret)
+          cdpBearerToken(url, "/settle", "POST", apiKeyId, apiKeySecret)
         ]);
         return {
           verify: { Authorization: `Bearer ${verify}` },
-          settle: { Authorization: `Bearer ${settle}` },
-          supported: { Authorization: `Bearer ${supported}` }
+          settle: { Authorization: `Bearer ${settle}` }
         };
       }
       const authorization = { Authorization: `Bearer ${bearer}` };
-      return { verify: authorization, settle: authorization, supported: authorization };
+      return { verify: authorization, settle: authorization };
     }
   });
+
+  // CDP's production facilitator is already proven for Base exact settlement,
+  // but its authenticated API does not expose the generic SDK /supported shape.
+  return {
+    async getSupported() {
+      return {
+        kinds: [{ x402Version: 2, scheme: "exact", network: BASE_NETWORK }],
+        extensions: ["bazaar"],
+        signers: {}
+      };
+    },
+    verify: (paymentPayload, paymentRequirements) => httpClient.verify(paymentPayload, paymentRequirements),
+    settle: (paymentPayload, paymentRequirements) => httpClient.settle(paymentPayload, paymentRequirements)
+  };
 }
 
 function discoveryExtension(toolName, description, properties, required) {
