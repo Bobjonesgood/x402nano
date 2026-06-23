@@ -1,0 +1,37 @@
+name: Publish MCP Registry metadata
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install verified MCP publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="v1.7.9"
+          asset="mcp-publisher_linux_amd64.tar.gz"
+          base="https://github.com/modelcontextprotocol/registry/releases/download/${version}"
+          curl --fail --location --silent --show-error "${base}/${asset}" --output "${asset}"
+          curl --fail --location --silent --show-error "${base}/registry_1.7.9_checksums.txt" --output checksums.txt
+          grep " ${asset}$" checksums.txt | sha256sum --check --strict
+          tar -xzf "${asset}" mcp-publisher
+          ./mcp-publisher --help >/dev/null
+
+      - name: Validate Registry manifest
+        run: ./mcp-publisher validate server.json
+
+      - name: Authenticate with GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish remote MCP server
+        run: ./mcp-publisher publish server.json
