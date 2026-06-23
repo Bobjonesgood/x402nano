@@ -1,0 +1,73 @@
+{
+  "name": "x402nano-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for x402nano prediction-market intelligence and paid Polymarket deltas.",
+  "license": "MIT",
+  "author": "Bobby Bowles",
+  "homepage": "https://github.com/Bobjonesgood/x402nano",
+  "server": {
+    "command": "node",
+    "args": ["dist/index.js"],
+    "env": {},
+    "transport": "stdio"
+  },
+  "tools": [
+    {
+      "name": "list_trending_markets",
+      "description": "List currently trending prediction markets and their slugs for later paid intelligence calls.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "Maximum markets to return (1-25).",
+            "default": 10
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_market_pricing",
+      "description": "Get current pricing and payment metadata for x402nano services (no parameters required).",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "get_market_brief",
+      "description": "Paid tool (0.05 USDC): returns a structured brief for a given market.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "description": "The Polymarket market slug (e.g., 'will-gideon-saar-be-the-next-prime-minister-of-israel')."
+          }
+        },
+        "required": ["slug"]
+      }
+    },
+    {
+      "name": "get_market_delta",
+      "description": "Paid tool (0.05 USDC): returns recent probability and pricing deltas for a given market since a prior check.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "description": "The Polymarket market slug."
+          },
+          "since": {
+            "type": "string",
+            "description": "ISO 8601 UTC timestamp of the previous check (e.g., '2026-06-20T00:00:00.000Z').",
+            "format": "date-time"
+          }
+        },
+        "required": ["slug", "since"]
+      }
+    }
+  ]
+}
