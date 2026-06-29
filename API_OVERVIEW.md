@@ -50,6 +50,17 @@ Any MCP client with Streamable HTTP support can connect and discover the tools. 
 
 The remote server never accepts or stores buyer private keys. Payment payloads are supplied in MCP request metadata, verified by the configured facilitator, and settled to the pinned x402nano seller wallet on Base.
 
+### Agent Quickstart
+
+1. Find `io.github.Bobjonesgood/x402nano` in the MCP Registry.
+2. Connect to `https://x402nano.onrender.com/mcp`.
+3. List tools and confirm the two free tools plus the two paid tools.
+4. Call `list_trending_markets` to choose a slug.
+5. Call `get_market_pricing` to inspect price, network, and seller.
+6. For `get_market_brief` or `get_market_delta`, use an x402-aware MCP client. The caller signs locally; x402nano never receives buyer private keys.
+
+Paid MCP calls cost `0.05 USDC` on Base mainnet (`eip155:8453`) and settle to `0x4cc3831eB479aCFb6D44631d4a30814508Cf52d3`. Unpaid paid-tool calls return payment-required behavior and do not reveal the unlocked brief or delta.
+
 Returns the machine-readable x402 manifest, seller metadata, supported network, price, payment header, and paid resource.
 
 ## Free Trending Markets

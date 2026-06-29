@@ -12,6 +12,27 @@ The remote server exposes free market discovery and pricing tools plus x402-prot
 
 The repository also retains the proven local stdio MCP server with conservative payment budgets. See [mcp-server/README.md](mcp-server/README.md) for both connection paths, unpaid verification, and client requirements. The standards-compliant remote server manifest is [server.json](server.json).
 
+## Agent Quickstart
+
+For a new MCP client or autonomous agent:
+
+1. Find `io.github.Bobjonesgood/x402nano` in the official MCP Registry.
+2. Connect to the Streamable HTTP remote: `https://x402nano.onrender.com/mcp`.
+3. List tools and confirm `list_trending_markets`, `get_market_pricing`, `get_market_brief`, and `get_market_delta`.
+4. Call `list_trending_markets` to choose a market slug.
+5. Call `get_market_pricing` to confirm Base mainnet pricing.
+6. Use an x402-aware MCP client for `get_market_brief` or `get_market_delta`.
+
+Pricing and payment boundaries:
+
+- Free tools: `list_trending_markets`, `get_market_pricing`.
+- Paid tools: `get_market_brief`, `get_market_delta`.
+- Price: `0.05 USDC` per paid tool call, `50000` atomic units.
+- Network: Base mainnet, `eip155:8453`.
+- Seller: `0x4cc3831eB479aCFb6D44631d4a30814508Cf52d3`.
+- Buyer keys stay local to the caller. x402nano never receives or stores buyer private keys.
+- Outputs are read-only market intelligence, not trading, betting, or financial advice.
+
 Machine-payable market intelligence API for AI agents and bots.
 
 x402nano serves read-only Polymarket market briefs, deltas, and webhook alert registrations behind an HTTP 402 payment flow. An agent receives a payment challenge, retries with `X-PAYMENT`, and receives the purchased intelligence object plus a receipt.

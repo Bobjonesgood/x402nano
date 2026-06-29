@@ -18,6 +18,17 @@ The local stdio implementation below remains available for agents that prefer to
 
 The MCP process runs in the agent user's environment. Buyer keys remain local and are used only by the official x402 client. x402nano never receives or stores a buyer private key.
 
+## Agent Quickstart
+
+1. Find `io.github.Bobjonesgood/x402nano` in the MCP Registry, or read `https://x402nano.onrender.com/server.json`.
+2. Connect a Streamable HTTP MCP client to `https://x402nano.onrender.com/mcp`.
+3. List tools and confirm `list_trending_markets`, `get_market_pricing`, `get_market_brief`, and `get_market_delta`.
+4. Call `list_trending_markets` to pick a market slug.
+5. Call `get_market_pricing` to confirm Base mainnet, USDC, seller, and tool prices.
+6. Use an x402-aware MCP client before calling `get_market_brief` or `get_market_delta` for real paid content.
+
+Free clients can discover tools and call the free tools. Paid calls require a locally held buyer key, an x402 payment payload, and the caller's explicit payment configuration. x402nano does not custody buyer funds or store buyer keys.
+
 ## Tools
 
 | Tool | Price | Purpose |
