@@ -1,5 +1,9 @@
 # x402nano
 
+## Why x402nano
+
+x402nano packages public Polymarket data into agent-ready intelligence objects: structured briefs, probability-change deltas, receipts, freshness metadata, and safety boundaries behind a native x402 payment flow.
+
 ## MCP Server
 
 x402nano exposes a public, stateless MCP endpoint using the production Streamable HTTP transport:
@@ -32,6 +36,145 @@ Pricing and payment boundaries:
 - Seller: `0x4cc3831eB479aCFb6D44631d4a30814508Cf52d3`.
 - Buyer keys stay local to the caller. x402nano never receives or stores buyer private keys.
 - Outputs are read-only market intelligence, not trading, betting, or financial advice.
+
+## What You Are Buying
+
+x402nano does not sell raw Polymarket data. It sells packaged, agent-ready market intelligence objects that save an agent from stitching together market metadata, current prices, movement history, scoring, receipt handling, and safety boundaries itself.
+
+A paid market brief includes:
+
+- market identity, question, category, status, end date, and source URL
+- current leading outcome and implied probability
+- outcome pricing summary and top outcomes
+- volume, 24h volume, 7d volume, liquidity, and change context when available
+- 24h movement summary from public price history when available
+- resolution/source context and data-quality notes
+- descriptive scores for movement, attention, and data completeness
+- watch points for future agent checks
+- receipt metadata proving the paid unlock
+- no-advice boundaries
+
+A paid market delta includes:
+
+- what changed since the caller-supplied `since` timestamp
+- leading outcome start/end probabilities when public history is available
+- absolute and relative probability change
+- direction, changed flag, repeat-check priority, and unusual-movement flag
+- current volume/liquidity context
+- trajectory points when available
+- data-quality notes explaining missing or nearest-point history
+- receipt metadata proving the paid unlock
+- no-advice boundaries
+
+Representative paid brief response:
+
+```json
+{
+  "status": "unlocked",
+  "receipt": {
+    "id": "receipt-id-after-payment",
+    "amount": "0.05",
+    "asset": "USDC",
+    "network": "eip155:8453"
+  },
+  "data": {
+    "briefType": "read-only-market-intelligence",
+    "market": {
+      "slug": "example-polymarket-slug",
+      "question": "Will example event happen in 2026?",
+      "status": "active",
+      "url": "https://polymarket.com/event/example"
+    },
+    "snapshot": {
+      "generatedAt": "2026-06-29T12:00:00.000Z",
+      "source": "polymarket:gamma",
+      "leadingOutcome": "Yes",
+      "leadingOutcomeImpliedProbability": "42.0%"
+    },
+    "metrics": {
+      "volume24h": "17,260.91",
+      "liquidity": "81,697.04"
+    },
+    "movement": {
+      "window": "24h",
+      "direction": "up",
+      "absoluteChange": "0.032"
+    },
+    "scores": {
+      "marketMovementScore": 61,
+      "attentionScore": 72,
+      "dataCompletenessScore": 100,
+      "unusualMovementFlag": false
+    },
+    "watchPoints": [
+      "Watch whether the leading outcome changes, flattens, or reverses over the next observation window."
+    ],
+    "boundaries": [
+      "Read-only public market data summary.",
+      "No trading execution.",
+      "No custody of user funds.",
+      "No buy/sell/bet recommendation."
+    ]
+  }
+}
+```
+
+Representative paid delta response:
+
+```json
+{
+  "status": "unlocked",
+  "receipt": {
+    "id": "receipt-id-after-payment",
+    "amount": "0.05",
+    "asset": "USDC",
+    "network": "eip155:8453"
+  },
+  "data": {
+    "briefType": "read-only-market-delta",
+    "market": {
+      "slug": "example-polymarket-slug",
+      "question": "Will example event happen in 2026?"
+    },
+    "window": {
+      "since": "2026-06-29T11:00:00.000Z",
+      "until": "2026-06-29T12:00:00.000Z"
+    },
+    "change": {
+      "source": "polymarket:clob",
+      "outcome": "Yes",
+      "startProbability": 0.388,
+      "endProbability": 0.42,
+      "absoluteChange": "0.032",
+      "relativeChange": "+8.2%",
+      "direction": "up",
+      "changed": true
+    },
+    "significance": {
+      "repeatCheckPriority": "medium",
+      "unusualMovementFlag": false,
+      "summary": "The leading outcome moved up by 0.032 over the requested window."
+    },
+    "dataQuality": {
+      "priceHistoryAvailable": true,
+      "usedNearestHistoryPoint": false,
+      "notes": [
+        "Delta is computed from available public market data.",
+        "This endpoint does not store caller state; clients provide the since timestamp."
+      ]
+    }
+  }
+}
+```
+
+Freshness and methodology:
+
+- Paid briefs and deltas are generated on request after a valid payment.
+- Public freshness metadata advertises an expected max age of 90 seconds, with paid content kept behind `402` until payment.
+- Brief movement uses the most recent public Polymarket data and 24h leading-outcome history when available.
+- Delta movement is computed from public Polymarket CLOB price history for the leading outcome token between the caller's `since` timestamp and the latest available point.
+- If exact history is unavailable, the response says so in `dataQuality` rather than pretending precision.
+- Scores are descriptive heuristics from movement size, volume, liquidity, and data availability. They are not predictions or recommendations.
 
 Machine-payable market intelligence API for AI agents and bots.
 
