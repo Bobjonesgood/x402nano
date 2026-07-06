@@ -9,6 +9,7 @@ import { declareDiscoveryExtension } from "@x402/extensions/bazaar";
 import { buildMarketBrief, buildMarketDelta, marketPreview } from "./market-briefs.js";
 import { createFacilitatorProvider, createSandboxProvider } from "./payment-providers.js";
 import { fetchMarketBySlug, fetchMarketPriceHistory, fetchTrendingMarkets, polymarketStatus } from "./polymarket-client.js";
+import { createRemoteMcpService } from "./remote-mcp.js";
 
 const PORT = Number(process.env.PORT ?? 4021);
 const HOST = process.env.HOST ?? "0.0.0.0";
@@ -427,6 +428,19 @@ const paymentProvider =
         canonicalPayment,
         walletPaymentMessage
       });
+
+const remoteMcp = await createRemoteMcpService({
+  sellerAddress: SELLER_ADDRESS,
+  paymentMode: PAYMENT_MODE,
+  onSettlement: ({ toolName, settlement, payer }) => {
+    logEvent("mcp_tool_settled", {
+      toolName,
+      payer,
+      transaction: settlement?.transaction ?? null,
+      network: settlement?.network ?? NETWORK
+    });
+  }
+});
 
 const leadSchema = {
   type: "object",
@@ -1373,6 +1387,18 @@ function apiDiscovery(req) {
       supportedAssets: [ASSET],
       sellerWallet: sellerWalletStatus()
     },
+    mcp: {
+      protocol: "Model Context Protocol",
+      transport: "streamable-http",
+      endpoint: `${origin}${remoteMcp.path}`,
+      manifest: `${origin}/server.json`,
+      tools: {
+        free: ["list_trending_markets", "get_market_pricing"],
+        paid: ["get_market_brief", "get_market_delta"]
+      },
+      payment: "Paid MCP tools use x402 payment metadata. The caller signs locally; x402nano never receives a buyer private key.",
+      clientCompatibility: "Any Streamable HTTP MCP client can discover the tools. Paid calls require an x402-aware MCP client."
+    },
     product: {
       ...marketProductStatus(),
       freshness: {
@@ -1395,12 +1421,15 @@ function apiDiscovery(req) {
     links: {
       self: `${origin}/.well-known/x402.json`,
       health: `${origin}/api/health`,
+      keepaliveHealth: `${origin}/health`,
       version: `${origin}/api/version`,
       pricing: `${origin}/api/pricing`,
       schema: `${origin}/api/schema`,
       trendingMarkets: trendingUrl,
       paidResource: paidUrl,
       paidDeltaResource: deltaUrl,
+      remoteMcp: `${origin}${remoteMcp.path}`,
+      mcpManifest: `${origin}/server.json`,
       sandboxSigner: paymentProvider.isClientSigningAvailable ? `${origin}/api/payments/sign` : null,
       receiptTemplate: `${origin}/api/receipts/{receiptId}`
     },
@@ -1638,6 +1667,15 @@ const server = http.createServer(async (req, res) => {
   }
 
   const url = requestUrl(req);
+
+  if (url.pathname === remoteMcp.path) {
+    return remoteMcp.handle(req, res);
+  }
+
+  if (req.method === "GET" && (url.pathname === "/server.json" || url.pathname === "/.well-known/mcp.json")) {
+    return json(res, 200, remoteMcp.manifest(publicOrigin(req)), { "Cache-Control": "public, max-age=300" });
+  }
+
   await refreshProductionLeadPack();
 
   if (req.method === "GET" && (url.pathname === "/api/discover" || url.pathname === "/.well-known/x402.json")) {
@@ -1652,6 +1690,16 @@ const server = http.createServer(async (req, res) => {
       paymentMode: paymentProvider.mode,
       settlement: paymentProvider.settlement,
       sellerWallet: sellerWalletStatus(),
+      mcp: {
+        endpoint: `${publicOrigin(req)}${remoteMcp.path}`,
+        transport: "streamable-http",
+        manifest: `${publicOrigin(req)}/server.json`,
+        paidTools: {
+          get_market_brief: PRICE_USDC,
+          get_market_delta: PRICE_USDC
+        },
+        clientRequirement: "Paid MCP calls require an x402-aware MCP client; buyer keys remain local to the caller."
+      },
       product: marketProductStatus(),
       uptimeSeconds: Math.floor(process.uptime()),
       issuedQuotes: issuedRequirements.size,
@@ -1682,6 +1730,16 @@ const server = http.createServer(async (req, res) => {
       quoteTtlSeconds: Math.floor(PAYMENT_TTL_MS / 1000),
       paymentMode: paymentProvider.mode,
       sellerWallet: sellerWalletStatus(),
+      mcp: {
+        endpoint: `${publicOrigin(req)}${remoteMcp.path}`,
+        transport: "streamable-http",
+        manifest: `${publicOrigin(req)}/server.json`,
+        amounts: {
+          get_market_brief: PRICE_USDC,
+          get_market_delta: PRICE_USDC
+        },
+        clientRequirement: "Paid MCP calls require an x402-aware MCP client; buyer keys remain local to the caller."
+      },
       freshness: {
         marketBrief: freshnessMetadata("market-brief"),
         marketDelta: freshnessMetadata("market-delta")
