@@ -117,13 +117,13 @@ settlement mode
 timestamp
 ```
 
-Known proof receipt:
+Known direct core Market Brief proof receipt:
 
 ```txt
 f1ffa2f5cabf94c3
 ```
 
-Known proof transaction:
+Known direct core Market Brief proof transaction:
 
 ```txt
 https://basescan.org/tx/0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1

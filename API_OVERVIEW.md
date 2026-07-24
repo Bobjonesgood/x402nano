@@ -52,7 +52,7 @@ The remote server never accepts or stores buyer private keys. Payment payloads a
 
 ### Agent Quickstart
 
-1. Find `io.github.Bobjonesgood/x402nano` in the MCP Registry.
+1. Find [`io.github.Bobjonesgood/x402nano`](https://registry.modelcontextprotocol.io/?q=io.github.Bobjonesgood%2Fx402nano) in the official MCP Registry.
 2. Connect to `https://x402nano.onrender.com/mcp`.
 3. List tools and confirm the two free tools plus the two paid tools.
 4. Call `list_trending_markets` to choose a slug.
@@ -272,9 +272,9 @@ GET /api/receipts/{receiptId}
 
 Receipts are retained in server memory for operational proof and debugging. The on-chain USDC transfer is the durable payment proof.
 
-## Mainnet Proof
+## Historical Mainnet Proofs
 
-x402nano completed a real paid unlock on Base mainnet.
+x402nano's dedicated local buyer completed an owner-approved direct Market Brief test on Base mainnet.
 
 ```txt
 Receipt: f1ffa2f5cabf94c3
@@ -294,7 +294,7 @@ receipt generated
 read-only market brief JSON unlocked
 ```
 
-x402nano also completed a real direct paid delta unlock on Base mainnet.
+x402nano's dedicated local buyer also completed a separate owner-approved direct Market Delta test on Base mainnet.
 
 ```txt
 Receipt: 75fe7c800fed47d4
@@ -304,6 +304,14 @@ USDC transfer tx: 0x701faef1c35086f5e2ee4243a35d3a904960bd4279ffaab1890b849c1330
 BaseScan: https://basescan.org/tx/0x701faef1c35086f5e2ee4243a35d3a904960bd4279ffaab1890b849c1330582a
 Proof note: DIRECT_DELTA_X402_PRODUCTION_UNLOCK_PROOF.md
 ```
+
+Market Watcher later completed a separate, owner-approved companion-client Market Brief test for `0.05 USDC` on Base mainnet:
+
+```txt
+BaseScan: https://basescan.org/tx/0xdcbaf5c73a55af9ed682591e747eabc915d4ef5da4f573fe44665b3710b5ef2b
+```
+
+All three transactions are historical proofs. The current public Market Watcher deployment remains mock-first, cannot make real payments, and contains no buyer key. x402nano's core paid brief and delta endpoints remain live.
 
 ## Public Boundaries
 

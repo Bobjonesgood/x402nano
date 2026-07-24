@@ -40,13 +40,22 @@ Scheme: exact
 ## Proof Metadata
 
 ```txt
-Proof status: real mainnet unlock completed
+Proof status: owner-approved historical direct core Market Brief unlock completed
 Receipt id: f1ffa2f5cabf94c3
 Proof amount: 0.05 USDC
 Proof transaction: 0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1
 Proof chain: Base mainnet
 Proof result: HTTP 402 challenge, X-PAYMENT retry, receipt generated, market brief JSON unlocked, on-chain USDC transfer confirmed.
 ```
+
+Separate historical proofs:
+
+```txt
+Direct core Market Delta: https://basescan.org/tx/0x701faef1c35086f5e2ee4243a35d3a904960bd4279ffaab1890b849c1330582a
+Market Watcher controlled companion-client Market Brief: https://basescan.org/tx/0xdcbaf5c73a55af9ed682591e747eabc915d4ef5da4f573fe44665b3710b5ef2b
+```
+
+The current public Market Watcher deployment remains mock-first, cannot make real payments, and contains no buyer key.
 
 ## Suggested Tags
 

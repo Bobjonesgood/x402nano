@@ -2,7 +2,15 @@
 
 ## Why x402nano
 
-x402nano packages public Polymarket data into agent-ready intelligence objects: structured briefs, probability-change deltas, receipts, freshness metadata, and safety boundaries behind a native x402 payment flow.
+x402nano is machine-payable Polymarket market intelligence for AI agents and MCP clients. It provides free market discovery and pricing tools, plus paid read-only Market Brief and Market Delta tools for `0.05 USDC` per call on Base mainnet.
+
+It does not trade, place bets, custody funds, or provide financial advice. Buyer keys remain local to the caller and are never received or stored by x402nano.
+
+**Live service:** https://x402nano.onrender.com
+
+**Public Market Watcher demo:** https://x402nano-market-watcher.bobjonesgood.chatgpt.site
+
+> x402nano is an independent project and is not affiliated with x402nano.org or the Nano/XNO cryptocurrency. “nano” refers to the project’s small, pay-per-request intelligence scope. References to x402, Base, Polymarket, USDC, and MCP describe technical compatibility or public data sources and do not imply endorsement.
 
 ## MCP Server
 
@@ -20,7 +28,7 @@ The repository also retains the proven local stdio MCP server with conservative 
 
 For a new MCP client or autonomous agent:
 
-1. Find `io.github.Bobjonesgood/x402nano` in the official MCP Registry.
+1. Find [`io.github.Bobjonesgood/x402nano`](https://registry.modelcontextprotocol.io/?q=io.github.Bobjonesgood%2Fx402nano) in the official MCP Registry.
 2. Connect to the Streamable HTTP remote: `https://x402nano.onrender.com/mcp`.
 3. List tools and confirm `list_trending_markets`, `get_market_pricing`, `get_market_brief`, and `get_market_delta`.
 4. Call `list_trending_markets` to choose a market slug.
@@ -208,44 +216,22 @@ Paid market delta endpoint:
 GET https://x402nano.onrender.com/api/markets/delta?slug=will-gideon-saar-be-the-next-prime-minister-of-israel&since=2026-06-15T12:00:00Z
 ```
 
-## Mainnet Proof
+## Historical Mainnet Proofs
 
-x402nano has completed one real paid unlock on Base mainnet.
+These are separate, owner-approved historical tests on Base mainnet. They demonstrate past paid unlocks; they are not instructions to make a payment.
 
-```txt
-Network: Base mainnet, eip155:8453
-Asset: USDC
-Price: 0.05 USDC
-Seller wallet: 0x4cc3831eB479aCFb6D44631d4a30814508Cf52d3
-Receipt: f1ffa2f5cabf94c3
-USDC transfer tx: 0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1
-BaseScan: https://basescan.org/tx/0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1
-```
+| Proof | Initiated by | Purchased resource | Price and network | Transaction | Current behavior |
+| --- | --- | --- | --- | --- | --- |
+| Direct core Market Brief | x402nano's dedicated local buyer script | `GET /api/markets/brief?slug=...` | `0.05 USDC` on Base mainnet (`eip155:8453`) | [BaseScan](https://basescan.org/tx/0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1) · receipt `f1ffa2f5cabf94c3` | The core paid brief endpoint remains live; this transaction is historical. |
+| Direct core Market Delta | x402nano's dedicated local buyer script | `GET /api/markets/delta?slug=...&since=...` | `0.05 USDC` on Base mainnet (`eip155:8453`) | [BaseScan](https://basescan.org/tx/0x701faef1c35086f5e2ee4243a35d3a904960bd4279ffaab1890b849c1330582a) · receipt `75fe7c800fed47d4` | The core paid delta endpoint remains live; this transaction is historical. See [the proof note](DIRECT_DELTA_X402_PRODUCTION_UNLOCK_PROOF.md). |
+| Market Watcher companion-client proof | An owner-approved controlled Market Watcher client | One x402nano Market Brief through the companion purchase flow | `0.05 USDC` on Base mainnet (`eip155:8453`) | [BaseScan](https://basescan.org/tx/0xdcbaf5c73a55af9ed682591e747eabc915d4ef5da4f573fe44665b3710b5ef2b) | Historical companion-client proof only. The public Market Watcher deployment remains mock-first, has real payments disabled, and has no buyer key. |
 
-The proof run verified:
-
-```txt
-HTTP 402 challenge issued
-0.05 USDC paid on Base mainnet
-X-PAYMENT retry accepted
-receipt generated
-market brief JSON unlocked
-on-chain USDC transfer confirmed
-```
-
-Delta proof:
-
-```txt
-Direct paid delta receipt: 75fe7c800fed47d4
-USDC transfer tx: 0x701faef1c35086f5e2ee4243a35d3a904960bd4279ffaab1890b849c1330582a
-BaseScan: https://basescan.org/tx/0x701faef1c35086f5e2ee4243a35d3a904960bd4279ffaab1890b849c1330582a
-Proof note: DIRECT_DELTA_X402_PRODUCTION_UNLOCK_PROOF.md
-```
+The direct core proof runs verified the HTTP `402` challenge, locally signed payment retry, on-chain USDC settlement, receipt generation, and read-only JSON unlock. The seller wallet was `0x4cc3831eB479aCFb6D44631d4a30814508Cf52d3`.
 
 Proof references:
 
 ```txt
-BaseScan transaction:
+Direct core Market Brief transaction:
 https://basescan.org/tx/0x54ba49a288a56d20046c25f4496bec405f2eefc05fe413cd511caf96227911b1
 
 In-repo proof notes:
@@ -396,20 +382,20 @@ Both examples show the intended agent loop: inspect freshness metadata, request 
 
 ## Local Proof Command
 
-Preflight only:
+Run these commands from the repository root after a normal clone.
+
+Preflight only; this does not sign or send a payment:
 
 ```powershell
-cd C:\Users\bobjo\Documents\Codex\2026-05-17\ok-ive-already-built-a-x402
 $env:MAINNET_PAID_PATH="/api/markets/brief?slug=will-gideon-saar-be-the-next-prime-minister-of-israel"
 $env:MAINNET_MAX_USDC="0.05"
 $env:MAINNET_PAYMENT_ACK="PREFLIGHT_ONLY"
 npm.cmd run agent:mainnet
 ```
 
-Real payment, only when intentionally sending one `0.05 USDC` unlock:
+Real payment example, only for a separately owner-approved test that intentionally sends one `0.05 USDC` unlock:
 
 ```powershell
-cd C:\Users\bobjo\Documents\Codex\2026-05-17\ok-ive-already-built-a-x402
 $env:MAINNET_PAID_PATH="/api/markets/brief?slug=will-gideon-saar-be-the-next-prime-minister-of-israel"
 $env:MAINNET_MAX_USDC="0.05"
 $env:MAINNET_PAYMENT_ACK="PAY_REAL_0.05_USDC"
@@ -477,3 +463,7 @@ npm.cmd run agent:mainnet
 npm.cmd run wallet:mainnet:create
 npm.cmd run build
 ```
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).

@@ -8,7 +8,7 @@ Real proof. Clear boundaries. No fake claims.
 
 ## What Is Proven
 
-x402nano has proven the core x402 flow on Base mainnet:
+x402nano has proven the direct core Market Brief x402 flow in an owner-approved historical test on Base mainnet:
 
 ```txt
 HTTP 402 challenge

@@ -20,7 +20,7 @@ The MCP process runs in the agent user's environment. Buyer keys remain local an
 
 ## Agent Quickstart
 
-1. Find `io.github.Bobjonesgood/x402nano` in the MCP Registry, or read `https://x402nano.onrender.com/server.json`.
+1. Find [`io.github.Bobjonesgood/x402nano`](https://registry.modelcontextprotocol.io/?q=io.github.Bobjonesgood%2Fx402nano) in the official MCP Registry, or read `https://x402nano.onrender.com/server.json`.
 2. Connect a Streamable HTTP MCP client to `https://x402nano.onrender.com/mcp`.
 3. List tools and confirm `list_trending_markets`, `get_market_pricing`, `get_market_brief`, and `get_market_delta`.
 4. Call `list_trending_markets` to pick a market slug.
